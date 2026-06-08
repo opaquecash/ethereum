@@ -12,9 +12,7 @@ import {
   saveSignatureSession,
   setRememberSignaturePreference,
 } from "../lib/signatureSession";
-
-const SETUP_MESSAGE =
-  "Sign this message to derive your Opaque Cash stealth keys. This does not approve any transaction.";
+import { SETUP_MESSAGE } from "../lib/stealth";
 
 type Phase = "idle" | "restoring" | "connecting" | "signing" | "checking" | "register" | "registering" | "done" | "error";
 

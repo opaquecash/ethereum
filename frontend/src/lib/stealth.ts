@@ -19,6 +19,18 @@ import { getAddress, type Address } from "viem";
 const CURVE = secp256k1;
 const DOMAIN = "opaque-cash-v1";
 
+/**
+ * The ONE canonical message every Opaque entry point must ask the wallet to sign
+ * before deriving stealth keys. Chain-neutral on purpose: a given wallet derives the
+ * same key set regardless of which view it onboards through.
+ *
+ * MUST match `spec/CSAP.md` §2.2 exactly (byte-for-byte) and the Solana frontend's
+ * `SETUP_MESSAGE`. Do not redefine this string anywhere else — import it. A regression
+ * test pins it to the spec value.
+ */
+export const SETUP_MESSAGE =
+  "Sign this message to derive your Opaque Cash stealth keys. This does not approve any transaction.";
+
 // -----------------------------------------------------------------------------
 // Key derivation from wallet signature (entropy)
 // -----------------------------------------------------------------------------
