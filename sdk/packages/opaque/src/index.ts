@@ -49,6 +49,7 @@ export {
 } from "./indexer/normalize.js";
 
 export {
+  SETUP_MESSAGE,
   deriveKeysFromSignature,
   computeStealthAddressAndViewTag,
   recomputeStealthSendFromEphemeralPrivateKey,

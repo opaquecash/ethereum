@@ -12,6 +12,14 @@ import { getAddress, type Address } from "viem";
 const CURVE = secp256k1;
 const DOMAIN = "opaque-cash-v1";
 
+/**
+ * Canonical message a wallet must sign before {@link deriveKeysFromSignature}.
+ * Chain-neutral by design — the same wallet derives the same keys everywhere.
+ * MUST match `spec/CSAP.md` §2.2 and both frontends' `SETUP_MESSAGE` byte-for-byte.
+ */
+export const SETUP_MESSAGE =
+  "Sign this message to derive your Opaque Cash stealth keys. This does not approve any transaction.";
+
 export function deriveKeysFromSignature(signatureHex: Hex): {
   viewingKey: Uint8Array;
   spendingKey: Uint8Array;
