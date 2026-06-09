@@ -1,6 +1,0 @@
-{
-  "chainId": 11155111,
-  "Groth16Verifier": "0x78A169b6E308Fd5BfAfc728f216CdB06EcEdde06",
-  "OpaqueReputationVerifier": "0x30B750Ae9851e104F8dbB4B8082b1a07a34885B0",
-  "admin": "0x7c8D8816aF13D77A9CFC9E510618f4F2DD625D13"
-}
