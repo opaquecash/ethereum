@@ -7,13 +7,14 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { pad, type Address } from "viem";
+import { pad, getAddress, type Address } from "viem";
 import { useWallet } from "../hooks/useWallet";
 import { useKeys } from "../context/KeysContext";
 import { useOpaqueWasm } from "../hooks/useOpaqueWasm";
 import { useSchemaStore, type V2DiscoveredTrait } from "../store/schemaStore";
 import { getV2Config, fetchAllSchemas, getCurrentBlock, fetchV2Announcements } from "../lib/psr";
 import { hexToBytes } from "../lib/attestationV2";
+import { getExplorerAddressUrl } from "../lib/explorer";
 import { ProofGeneratorModal } from "./ProofGeneratorModal";
 
 export type MyTraitsViewProps = {
@@ -45,6 +46,34 @@ type ScanResult = {
 function mask(s: string): string {
   if (!s) return "—";
   return s.length > 14 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s;
+}
+
+/** The issuer rides in the announcement as a 32-byte left-padded value. Recover
+ *  the 20-byte EVM address (last 20 bytes) and checksum it; null if not an address. */
+function issuerAddress(issuer: string): Address | null {
+  const hex = issuer.startsWith("0x") ? issuer.slice(2) : issuer;
+  if (hex.length < 40 || !/^[0-9a-fA-F]+$/.test(hex)) return null;
+  try {
+    return getAddress(`0x${hex.slice(-40)}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Issuer address, linked to the block explorer when one is known. */
+function IssuerLink({ chainId, issuer }: { chainId: number | null | undefined; issuer: string }) {
+  const url = chainId != null ? getExplorerAddressUrl(chainId, issuer) : null;
+  if (!url) return <span className="font-mono text-mist">{mask(issuer)}</span>;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-mono text-mist underline-offset-2 hover:text-glow hover:underline"
+    >
+      {mask(issuer)}
+    </a>
+  );
 }
 
 function TraitIcon() {
@@ -137,7 +166,9 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
         stealthAddress: att.stealth_address,
         schemaId: att.schema_id.startsWith("0x") ? att.schema_id : `0x${att.schema_id}`,
         schemaName: att.schema_name ?? "Unknown Schema",
-        issuer: att.issuer.startsWith("0x") ? att.issuer : `0x${att.issuer}`,
+        issuer:
+          issuerAddress(att.issuer) ??
+          (att.issuer.startsWith("0x") ? att.issuer : `0x${att.issuer}`),
         attestationUid: att.attestation_uid.startsWith("0x")
           ? att.attestation_uid
           : `0x${att.attestation_uid}`,
@@ -257,7 +288,7 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
                       </div>
                       <dl className="mt-2 grid grid-cols-[3.5rem_1fr] gap-x-3 gap-y-1 text-xs">
                         <dt className="text-mist/50">Issuer</dt>
-                        <dd className="font-mono text-mist" title={t.issuer}>{mask(t.issuer)}</dd>
+                        <dd title={t.issuer}><IssuerLink chainId={chainId} issuer={t.issuer} /></dd>
                         <dt className="text-mist/50">UID</dt>
                         <dd className="font-mono text-mist" title={t.attestationUid}>{mask(t.attestationUid)}</dd>
                       </dl>
