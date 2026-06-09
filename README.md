@@ -66,10 +66,13 @@ Full API surface, types, and lower-level packages (`@opaquecash/stealth-*`, `@op
 
 ## Developer docs
 
-The **`docs/`** app is a Vite + React site: quick start, configuration, indexer integration, send/receive guides, PSR flows, API reference, and a **playground**.
+The documentation site now lives in its own repository,
+[opaquecash/docs](https://github.com/opaquecash/docs) (published at
+[docs.opaque.cash](https://docs.opaque.cash)): quick start, configuration, indexer integration,
+send/receive guides, PSR flows, cross-chain scan, API reference, and a **playground**.
 
 ```bash
-cd docs && npm install && npm run dev
+git clone https://github.com/opaquecash/docs && cd docs && npm install && npm run dev
 ```
 
 Use it alongside the SDK README when you’re wiring **Graph-style announcement rows**, **reputation proofs**, or custom deployments.
@@ -82,7 +85,7 @@ Use it alongside the SDK README when you’re wiring **Graph-style announcement 
 |------|------------------|
 | [`frontend/`](frontend/) | Reference wallet UI (balances, send, receive, private balance) |
 | TypeScript SDK | Canonical packages [`@opaquecash/opaque`](https://www.npmjs.com/package/@opaquecash/opaque) and modular `@opaquecash/{stealth,psr}-*` ([opaquecash/sdk](https://github.com/opaquecash/sdk)); was the in-repo `sdk/` |
-| [`docs/`](docs/) | Developer documentation site |
+| Developer docs | Standalone docs site [opaquecash/docs](https://github.com/opaquecash/docs) ([docs.opaque.cash](https://docs.opaque.cash)); was the in-repo `docs/` |
 | [`infra/`](infra/) | Hardhat contracts, deploy scripts |
 | Rust WASM scanner core | Canonical crate [`opaque-scanner`](https://crates.io/crates/opaque-scanner) ([opaquecash/scanner](https://github.com/opaquecash/scanner)); was the in-repo `scanner/` |
 
