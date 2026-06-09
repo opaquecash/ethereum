@@ -15,6 +15,7 @@ import { ReceiveView } from "./components/ReceiveView";
 import { SubENSView } from "./components/SubENSView";
 import { ProfileView } from "./components/ProfileView";
 import { ProtocolLogPanel } from "./components/ProtocolLogPanel";
+import { SchemaStudio } from "./components/SchemaStudio";
 import { Layout, type Tab } from "./components/Layout";
 import { NetworkGuard } from "./components/NetworkGuard";
 import { useWallet } from "./hooks/useWallet";
@@ -98,6 +99,7 @@ function AppContent() {
     if (tab === "history") return <TransactionHistoryView />;
     if (tab === "subens") return <SubENSView onBack={() => setTab("dashboard")} />;
     if (tab === "profile") return <ProfileView onNavigate={setTab} onDisconnect={handleDisconnect} />;
+    if (tab === "schemas") return <SchemaStudio onNavigate={(t) => setTab(t as Tab)} />;
     return null;
   };
 

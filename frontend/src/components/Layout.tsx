@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { TestnetBanner } from "./TestnetBanner";
 
-export type Tab = "dashboard" | "send" | "receive" | "balance" | "history" | "subens" | "profile" | "faucet";
+export type Tab = "dashboard" | "send" | "receive" | "balance" | "history" | "subens" | "profile" | "schemas" | "faucet";
 
 type LayoutProps = {
   tab: Tab;
