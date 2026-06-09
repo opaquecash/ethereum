@@ -86,6 +86,9 @@ export const MULTICHAIN_CONFIG: Record<number, ChainContractConfig> = {
     deployed.tokens
     ? {
       [deployed.chainId]: {
+        // Preserve static fields (incl. the V2 PSR contract addresses) so the
+        // deployed-addresses.json override does not drop them.
+        ...STATIC_CONFIG[deployed.chainId],
         registry: deployed.registry as Address,
         announcer: deployed.announcer as Address,
         tokens: {
