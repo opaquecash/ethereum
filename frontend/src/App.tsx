@@ -16,6 +16,9 @@ import { SubENSView } from "./components/SubENSView";
 import { ProfileView } from "./components/ProfileView";
 import { ProtocolLogPanel } from "./components/ProtocolLogPanel";
 import { SchemaStudio } from "./components/SchemaStudio";
+import { AttestationManager } from "./components/AttestationManager";
+import { MyTraitsView } from "./components/MyTraitsView";
+import { ManageView } from "./components/ManageView";
 import { Layout, type Tab } from "./components/Layout";
 import { NetworkGuard } from "./components/NetworkGuard";
 import { useWallet } from "./hooks/useWallet";
@@ -100,6 +103,9 @@ function AppContent() {
     if (tab === "subens") return <SubENSView onBack={() => setTab("dashboard")} />;
     if (tab === "profile") return <ProfileView onNavigate={setTab} onDisconnect={handleDisconnect} />;
     if (tab === "schemas") return <SchemaStudio onNavigate={(t) => setTab(t as Tab)} />;
+    if (tab === "attest") return <AttestationManager onNavigate={(t) => setTab(t as Tab)} />;
+    if (tab === "my-traits") return <MyTraitsView onNavigate={(t) => setTab(t as Tab)} />;
+    if (tab === "manage") return <ManageView onNavigate={(t) => setTab(t as Tab)} />;
     return null;
   };
 
