@@ -1,55 +1,145 @@
 /**
- * My Traits — discovered V2 attestations + proof generation (Ethereum)
+ * My Traits — discover V2 attestations + proof generation (Ethereum)
  *
- * Shows the V2 traits discovered for the connected wallet (populated by the V2
- * WASM scanner into the schema store) and lets the user prove one via
- * ProofGeneratorModal. Ported from the Solana MyTraitsView.
+ * Scans cached Announcement events with the connected wallet's viewing key via
+ * the V2 WASM scanner (scan_attestations_v2_wasm), surfaces the matched traits,
+ * and lets the user prove one via ProofGeneratorModal. Ported from the Solana
+ * MyTraitsView.
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { pad, type Address } from "viem";
 import { useWallet } from "../hooks/useWallet";
+import { useKeys } from "../context/KeysContext";
+import { useOpaqueWasm } from "../hooks/useOpaqueWasm";
 import { useSchemaStore, type V2DiscoveredTrait } from "../store/schemaStore";
-import { getV2Config, fetchAllSchemas, fetchAllAttestations } from "../lib/psr";
+import { getV2Config, fetchAllSchemas, getCurrentBlock } from "../lib/psr";
+import { getAnnouncementsForChain } from "../lib/opaqueCache";
+import { hexToBytes } from "../lib/attestationV2";
 import { ProofGeneratorModal } from "./ProofGeneratorModal";
 
 export type MyTraitsViewProps = {
   onNavigate?: (tab: string) => void;
 };
 
+type ScanResult = {
+  stealth_address: string;
+  schema_id: string;
+  schema_name?: string | null;
+  issuer: string;
+  attestation_uid: string;
+  data_hex: string;
+  nonce: string;
+  merkle_leaf_preimage: {
+    stealth_pk_field: string;
+    schema_id_field: string;
+    issuer_pk_x: string;
+    trait_data_hash: string;
+    nonce_field: string;
+  };
+  tx_hash: string;
+  slot: number;
+  is_valid: boolean;
+  issuer_authorized: boolean;
+};
+
 export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
   const { chainId, isConnected } = useWallet();
+  const { isSetup, getMasterKeys } = useKeys();
+  const { wasm, isReady: wasmReady } = useOpaqueWasm();
+
   const setSchemas = useSchemaStore((s) => s.setSchemas);
-  const setAttestations = useSchemaStore((s) => s.setAttestations);
+  const setDiscoveredTraits = useSchemaStore((s) => s.setDiscoveredTraits);
   const discoveredTraits = useSchemaStore((s) => s.discoveredTraits);
   const traits = useMemo(
     () => Object.values(discoveredTraits).filter((t) => t.isValid && t.issuerAuthorized),
     [discoveredTraits]
   );
-  const [refreshing, setRefreshing] = useState(false);
+
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [proving, setProving] = useState<V2DiscoveredTrait | null>(null);
 
   const v2Configured = getV2Config(chainId) != null;
 
-  const refresh = useCallback(async () => {
-    if (chainId == null || !getV2Config(chainId)) return;
-    setRefreshing(true);
+  const scan = useCallback(async () => {
+    if (chainId == null || !getV2Config(chainId) || !isSetup || !wasmReady || !wasm) return;
+    setScanning(true);
+    setError(null);
     try {
-      const [schemas, atts] = await Promise.all([
+      const master = getMasterKeys();
+      const [schemas, announcements, currentBlock] = await Promise.all([
         fetchAllSchemas(chainId),
-        fetchAllAttestations(chainId),
+        getAnnouncementsForChain(chainId),
+        getCurrentBlock(chainId),
       ]);
       setSchemas(schemas);
-      setAttestations(atts);
-    } catch {
-      /* best-effort */
+
+      const announcementsPayload = announcements.map((a) => ({
+        stealthAddress: a.args.stealthAddress ?? "",
+        viewTag: parseInt((a.args.metadata ?? "0x00").slice(2, 4) || "0", 16),
+        ephemeralPubKey: a.args.ephemeralPubKey ?? "0x",
+        metadata: a.args.metadata ?? "0x",
+        txHash: a.transactionHash,
+        blockNumber: a.blockNumber,
+      }));
+
+      // The scanner compares the announcement issuer (32 bytes) to the schema
+      // authority/delegates; left-pad the 20-byte addresses to 32 bytes so they
+      // match the issuer encoded into the announcement (see psr.encodeV2AttestationMetadata).
+      const schemasPayload = schemas.map((s) => ({
+        schema_id: Array.from(hexToBytes(s.schemaId)),
+        authority: Array.from(hexToBytes(pad(s.authority as Address, { size: 32 }))),
+        delegates: s.delegates.map((d) => Array.from(hexToBytes(pad(d as Address, { size: 32 })))),
+        deprecated: s.deprecated,
+        schema_expiry_slot: s.schemaExpirySlot,
+        name: s.name,
+      }));
+
+      const resultJson = wasm.scan_attestations_v2_wasm(
+        JSON.stringify(announcementsPayload),
+        JSON.stringify(schemasPayload),
+        master.viewPrivKey,
+        master.spendPubKey,
+        BigInt(currentBlock),
+        "[]"
+      );
+
+      const parsed = JSON.parse(resultJson) as ScanResult[];
+      const mapped: V2DiscoveredTrait[] = parsed.map((att) => ({
+        stealthAddress: att.stealth_address,
+        schemaId: att.schema_id.startsWith("0x") ? att.schema_id : `0x${att.schema_id}`,
+        schemaName: att.schema_name ?? "Unknown Schema",
+        issuer: att.issuer.startsWith("0x") ? att.issuer : `0x${att.issuer}`,
+        attestationUid: att.attestation_uid.startsWith("0x")
+          ? att.attestation_uid
+          : `0x${att.attestation_uid}`,
+        dataHex: att.data_hex,
+        nonce: att.nonce.startsWith("0x") ? att.nonce : `0x${att.nonce}`,
+        merkleLeafPreimage: {
+          stealthPkField: att.merkle_leaf_preimage.stealth_pk_field,
+          schemaIdField: att.merkle_leaf_preimage.schema_id_field,
+          issuerPkX: att.merkle_leaf_preimage.issuer_pk_x,
+          traitDataHash: att.merkle_leaf_preimage.trait_data_hash,
+          nonceField: att.merkle_leaf_preimage.nonce_field,
+        },
+        txHash: att.tx_hash,
+        slot: att.slot,
+        isValid: att.is_valid,
+        issuerAuthorized: att.issuer_authorized,
+        isV2: true,
+      }));
+      setDiscoveredTraits(mapped);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Scan failed.");
     } finally {
-      setRefreshing(false);
+      setScanning(false);
     }
-  }, [chainId, setSchemas, setAttestations]);
+  }, [chainId, isSetup, wasmReady, wasm, getMasterKeys, setSchemas, setDiscoveredTraits]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void scan();
+  }, [scan]);
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6">
@@ -62,11 +152,11 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
           </p>
         </div>
         <button
-          onClick={() => void refresh()}
-          disabled={refreshing}
+          onClick={() => void scan()}
+          disabled={scanning || !wasmReady || !isSetup}
           className="rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-mist hover:text-white disabled:opacity-40"
         >
-          {refreshing ? "…" : "Refresh"}
+          {scanning ? "Scanning…" : "Scan"}
         </button>
       </header>
 
@@ -75,15 +165,18 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
           The V2 reputation contracts are not configured for this network.
         </div>
       )}
+      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
       {!isConnected ? (
         <p className="text-sm text-mist">Connect a wallet to see your traits.</p>
       ) : traits.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-ink-700 bg-ink-900/40 p-8 text-center">
-          <p className="text-sm text-mist">No traits discovered yet.</p>
+          <p className="text-sm text-mist">
+            {scanning ? "Scanning announcements…" : "No traits discovered yet."}
+          </p>
           <p className="mt-1 text-xs text-mist/60">
-            Traits appear here after the scanner detects a V2 attestation announcement addressed to
-            one of your stealth addresses.
+            Traits appear here once the scanner detects a V2 attestation announcement addressed to
+            one of your stealth addresses. Make sure your announcements have synced, then Scan.
           </p>
           {onNavigate && (
             <button
@@ -111,9 +204,7 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
               </div>
               <button
                 onClick={() => setProving(t)}
-                disabled={t.chainDiscoveryOnly}
                 className="mt-3 rounded-lg bg-glow px-3 py-1.5 text-xs font-semibold text-ink-950 disabled:opacity-40"
-                title={t.chainDiscoveryOnly ? "Awaiting the V2 announcement to build a proof" : undefined}
               >
                 Prove
               </button>

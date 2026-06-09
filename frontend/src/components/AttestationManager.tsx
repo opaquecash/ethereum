@@ -7,14 +7,22 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { EIP1193Provider, Hex } from "viem";
+import type { EIP1193Provider, Hex, Address } from "viem";
 import { useWallet } from "../hooks/useWallet";
 import { useToast } from "../context/ToastContext";
 import { parseFieldDefs, type SchemaV2 } from "../lib/schema";
 import { encodeAttestationData, bytesToHex, hexToBytes } from "../lib/attestationV2";
 import { computeStealthAddressAndViewTag } from "../lib/stealth";
 import { keccak_256 } from "@noble/hashes/sha3";
-import { getV2Config, fetchAllSchemas, attest, getCurrentBlock } from "../lib/psr";
+import {
+  getV2Config,
+  fetchAllSchemas,
+  attest,
+  getCurrentBlock,
+  encodeV2AttestationMetadata,
+  announceV2Attestation,
+  randomNonce,
+} from "../lib/psr";
 import { useSchemaStore } from "../store/schemaStore";
 
 export type AttestationManagerProps = {
@@ -39,15 +47,25 @@ function isRecipientPlausible(s: string): boolean {
  *  attestation is bound to. A meta-address derives a one-time stealth address
  *  (DKSAP) which is then hashed; a stealth address is hashed directly; a
  *  32-byte value is used as-is. Mirrors the Solana AttestationManager. */
-function resolveStealthAddressHash(input: string): { hash: Hex; stealthAddress?: string } {
+function resolveStealthAddressHash(input: string): {
+  hash: Hex;
+  stealthAddress?: Address;
+  ephemeralPubKey?: Hex;
+  viewTag?: number;
+} {
   const v = input.trim() as Hex;
   const n = recipientHexLen(v);
   if (n === 132) {
-    const { stealthAddress } = computeStealthAddressAndViewTag(v);
-    return { hash: bytesToHex(keccak_256(hexToBytes(stealthAddress))), stealthAddress };
+    const { stealthAddress, ephemeralPubKey, viewTag } = computeStealthAddressAndViewTag(v);
+    return {
+      hash: bytesToHex(keccak_256(hexToBytes(stealthAddress))),
+      stealthAddress,
+      ephemeralPubKey: bytesToHex(ephemeralPubKey),
+      viewTag,
+    };
   }
   if (n === 40) {
-    return { hash: bytesToHex(keccak_256(hexToBytes(v))), stealthAddress: v };
+    return { hash: bytesToHex(keccak_256(hexToBytes(v))), stealthAddress: v as Address };
   }
   if (n === 64) {
     return { hash: v };
@@ -127,8 +145,9 @@ export function AttestationManager({ onNavigate }: AttestationManagerProps = {})
     setError(null);
     setLastUid(null);
     try {
-      const { hash: stealthAddressHash, stealthAddress } = resolveStealthAddressHash(recipientInput);
-      setResolvedStealth(stealthAddress ?? null);
+      const resolved = resolveStealthAddressHash(recipientInput);
+      const stealthAddressHash = resolved.hash;
+      setResolvedStealth(resolved.stealthAddress ?? null);
 
       let expiration = 0n;
       if (hasExpiry) {
@@ -148,6 +167,29 @@ export function AttestationManager({ onNavigate }: AttestationManagerProps = {})
         expirationBlock: expiration,
       });
       setLastUid(uid);
+
+      // Announce so the recipient's scanner can discover this attestation. Only
+      // possible when we derived the stealth address from a meta-address, since
+      // that yields the ephemeral key the recipient needs to recompute it.
+      if (resolved.ephemeralPubKey && resolved.stealthAddress && resolved.viewTag !== undefined) {
+        try {
+          const metadata = encodeV2AttestationMetadata({
+            viewTag: resolved.viewTag,
+            schemaId: selectedSchema.schemaId as Hex,
+            issuer: walletAddress,
+            uid,
+            nonce: randomNonce(),
+          });
+          await announceV2Attestation(ctx, {
+            stealthAddress: resolved.stealthAddress,
+            ephemeralPubKey: resolved.ephemeralPubKey,
+            metadata,
+          });
+        } catch (annErr) {
+          console.warn("[AttestationManager] announcement failed (non-fatal):", annErr);
+        }
+      }
+
       showToast("Attestation issued", { explorerTx: { chainId, txHash } });
       setFieldValues({});
       setRecipientInput("");

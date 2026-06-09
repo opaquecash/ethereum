@@ -55,6 +55,21 @@ export interface OpaqueWasmModule {
     view_tag: number,
     attestation_id: bigint
   ) => string;
+  scan_attestations_v2_wasm: (
+    announcements_json: string,
+    schemas_json: string,
+    view_privkey_bytes: Uint8Array,
+    spend_pubkey_bytes: Uint8Array,
+    current_slot: bigint,
+    trusted_issuers_json: string
+  ) => string;
+  encode_v2_attestation_metadata_wasm: (
+    view_tag: number,
+    schema_id_hex: string,
+    issuer_hex: string,
+    attestation_uid_hex: string,
+    nonce_hex: string
+  ) => string;
 }
 
 interface UseOpaqueWasmReturn {

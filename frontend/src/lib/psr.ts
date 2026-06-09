@@ -15,6 +15,9 @@ import {
   custom,
   http,
   parseAbiItem,
+  concatHex,
+  numberToHex,
+  pad,
   type Abi,
   type Address,
   type EIP1193Provider,
@@ -301,6 +304,77 @@ export async function isAuthorizedIssuer(chainId: number, schemaId: Hex, candida
   const cfg = getV2Config(chainId);
   if (!cfg) return false;
   return (await publicClientFor(chainId).readContract({ address: cfg.schemaRegistry, abi: SCHEMA_REGISTRY_ABI, functionName: "isAuthorizedIssuer", args: [schemaId, candidate] })) as boolean;
+}
+
+// ---------------------------------------------------------------------------
+// V2 announcement (so a recipient's scanner can discover an attestation)
+// ---------------------------------------------------------------------------
+
+const ANNOUNCER_ABI = [
+  {
+    type: "function",
+    name: "announce",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "schemeId", type: "uint256" },
+      { name: "stealthAddress", type: "address" },
+      { name: "ephemeralPubKey", type: "bytes" },
+      { name: "metadata", type: "bytes" },
+    ],
+    outputs: [],
+  },
+] as const satisfies Abi;
+
+/**
+ * Encode the V2 attestation announcement metadata that the scanner decodes:
+ *   view_tag(1) || 0xB2 || schema_id(32) || issuer(32) || uid(32) || nonce(32)
+ * The issuer (a 20-byte address) is left-padded to 32 bytes so it matches the
+ * left-padded schema authority/delegate bytes the scanner compares against.
+ */
+export function encodeV2AttestationMetadata(args: {
+  viewTag: number;
+  schemaId: Hex;
+  issuer: Address;
+  uid: Hex;
+  nonce: Hex;
+}): Hex {
+  return concatHex([
+    numberToHex(args.viewTag & 0xff, { size: 1 }),
+    "0xb2",
+    args.schemaId,
+    pad(args.issuer, { size: 32 }),
+    args.uid,
+    args.nonce,
+  ]);
+}
+
+/** A fresh 32-byte nonce as 0x-hex. */
+export function randomNonce(): Hex {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  return ("0x" + Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("")) as Hex;
+}
+
+/**
+ * Publish a V2 attestation announcement via the StealthAddressAnnouncer so the
+ * recipient's scanner (scan_attestations_v2_wasm) can match it with their viewing
+ * key and surface it on the My Traits page.
+ */
+export async function announceV2Attestation(
+  ctx: WriteCtx,
+  args: { stealthAddress: Address; ephemeralPubKey: Hex; metadata: Hex }
+): Promise<Hex> {
+  const cfg = getConfigForChain(ctx.chainId);
+  if (!cfg?.announcer) throw new Error("No announcer configured for this chain.");
+  const wallet = walletClientFor(ctx.chainId, ctx.provider);
+  return wallet.writeContract({
+    address: cfg.announcer,
+    abi: ANNOUNCER_ABI,
+    functionName: "announce",
+    args: [1n, args.stealthAddress, args.ephemeralPubKey, args.metadata],
+    account: ctx.account,
+    chain: getChain(ctx.chainId),
+  });
 }
 
 function requireCfg(chainId: number): V2Config {
