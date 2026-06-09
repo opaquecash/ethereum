@@ -13,7 +13,7 @@ import { useToast } from "../context/ToastContext";
 import { parseFieldDefs, type SchemaV2 } from "../lib/schema";
 import { encodeAttestationData, ZERO_BYTES32 } from "../lib/attestationV2";
 import { getV2Config, fetchAllSchemas, attest, getCurrentBlock } from "../lib/psr";
-import { useSchemaStore, selectMySchemas } from "../store/schemaStore";
+import { useSchemaStore } from "../store/schemaStore";
 
 export type AttestationManagerProps = {
   onNavigate?: (tab: string) => void;
@@ -30,9 +30,14 @@ export function AttestationManager({ onNavigate }: AttestationManagerProps = {})
   const setSchemas = useSchemaStore((s) => s.setSchemas);
   const setIsFetchingSchemas = useSchemaStore((s) => s.setIsFetchingSchemas);
   const isFetchingSchemas = useSchemaStore((s) => s.isFetchingSchemas);
-  const mySchemas = useSchemaStore((s) =>
-    walletAddress ? selectMySchemas(s, walletAddress) : []
-  );
+  const schemasMap = useSchemaStore((s) => s.schemas);
+  const mySchemas = useMemo(() => {
+    if (!walletAddress) return [];
+    const lower = walletAddress.toLowerCase();
+    return Object.values(schemasMap).filter(
+      (s) => s.authority.toLowerCase() === lower || s.delegates.some((d) => d.toLowerCase() === lower)
+    );
+  }, [schemasMap, walletAddress]);
 
   const [schemaId, setSchemaId] = useState<string>("");
   const [stealthHash, setStealthHash] = useState<string>("");

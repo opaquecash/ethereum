@@ -6,7 +6,7 @@
  * Ported from the Solana ManageView, backed by the viem data layer.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { EIP1193Provider, Address, Hex } from "viem";
 import { useWallet } from "../hooks/useWallet";
 import { useToast } from "../context/ToastContext";
@@ -23,7 +23,7 @@ import {
   revoke,
   getCurrentBlock,
 } from "../lib/psr";
-import { useSchemaStore, selectMySchemas } from "../store/schemaStore";
+import { useSchemaStore } from "../store/schemaStore";
 
 export type ManageViewProps = {
   onNavigate?: (tab: string) => void;
@@ -40,9 +40,14 @@ export function ManageView({ onNavigate }: ManageViewProps = {}) {
   const setSchemas = useSchemaStore((s) => s.setSchemas);
   const setAttestations = useSchemaStore((s) => s.setAttestations);
   const attestations = useSchemaStore((s) => s.attestations);
-  const mySchemas = useSchemaStore((s) =>
-    walletAddress ? selectMySchemas(s, walletAddress) : []
-  );
+  const schemasMap = useSchemaStore((s) => s.schemas);
+  const mySchemas = useMemo(() => {
+    if (!walletAddress) return [];
+    const lower = walletAddress.toLowerCase();
+    return Object.values(schemasMap).filter(
+      (s) => s.authority.toLowerCase() === lower || s.delegates.some((d) => d.toLowerCase() === lower)
+    );
+  }, [schemasMap, walletAddress]);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

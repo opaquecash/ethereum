@@ -6,9 +6,9 @@
  * ProofGeneratorModal. Ported from the Solana MyTraitsView.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWallet } from "../hooks/useWallet";
-import { useSchemaStore, selectValidTraits, type V2DiscoveredTrait } from "../store/schemaStore";
+import { useSchemaStore, type V2DiscoveredTrait } from "../store/schemaStore";
 import { getV2Config, fetchAllSchemas, fetchAllAttestations } from "../lib/psr";
 import { ProofGeneratorModal } from "./ProofGeneratorModal";
 
@@ -20,7 +20,11 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
   const { chainId, isConnected } = useWallet();
   const setSchemas = useSchemaStore((s) => s.setSchemas);
   const setAttestations = useSchemaStore((s) => s.setAttestations);
-  const traits = useSchemaStore(selectValidTraits);
+  const discoveredTraits = useSchemaStore((s) => s.discoveredTraits);
+  const traits = useMemo(
+    () => Object.values(discoveredTraits).filter((t) => t.isValid && t.issuerAuthorized),
+    [discoveredTraits]
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [proving, setProving] = useState<V2DiscoveredTrait | null>(null);
 

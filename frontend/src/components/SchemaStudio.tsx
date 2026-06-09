@@ -11,7 +11,7 @@
  * of @solana/web3.js.
  */
 
-import { useState, useId, useEffect, useCallback } from "react";
+import { useState, useId, useEffect, useCallback, useMemo } from "react";
 import type { EIP1193Provider, Address, Hex } from "viem";
 import { useWallet } from "../hooks/useWallet";
 import { useToast } from "../context/ToastContext";
@@ -28,10 +28,7 @@ import {
   fetchSchema,
   getCurrentBlock,
 } from "../lib/psr";
-import {
-  useSchemaStore,
-  selectMySchemas,
-} from "../store/schemaStore";
+import { useSchemaStore } from "../store/schemaStore";
 
 // =============================================================================
 // Constants
@@ -66,9 +63,14 @@ export function SchemaStudio({ onNavigate }: SchemaStudioProps = {}) {
   const setSchemas = useSchemaStore((s) => s.setSchemas);
   const setIsFetchingSchemas = useSchemaStore((s) => s.setIsFetchingSchemas);
   const isFetchingSchemas = useSchemaStore((s) => s.isFetchingSchemas);
-  const mySchemas = useSchemaStore((s) =>
-    walletAddress ? selectMySchemas(s, walletAddress) : []
-  );
+  const schemasMap = useSchemaStore((s) => s.schemas);
+  const mySchemas = useMemo(() => {
+    if (!walletAddress) return [];
+    const lower = walletAddress.toLowerCase();
+    return Object.values(schemasMap).filter(
+      (s) => s.authority.toLowerCase() === lower || s.delegates.some((d) => d.toLowerCase() === lower)
+    );
+  }, [schemasMap, walletAddress]);
 
   const [name, setName] = useState("");
   const [fields, setFields] = useState<FieldDef[]>([
