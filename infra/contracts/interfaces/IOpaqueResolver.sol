@@ -2,10 +2,9 @@
 pragma solidity ^0.8.20;
 
 /// @title IOpaqueResolver
-/// @notice Optional hook a schema can attach to gate or react to attestations,
-///         mirroring the Solana attestation-engine-v2 resolver CPI. The attestation
-///         engine calls these AFTER committing state (checks-effects-interactions);
-///         a resolver rejects an action by reverting.
+/// @notice Optional hook a schema can attach to gate or react to attestations. The
+///         attestation engine calls these after committing state
+///         (checks-effects-interactions); a resolver rejects by reverting.
 interface IOpaqueResolver {
     /// @notice Called after a new attestation is recorded.
     function onAttest(

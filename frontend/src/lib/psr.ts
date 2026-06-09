@@ -5,8 +5,6 @@
  * OpaqueAttestationRegistry by enumerating their events (chunked getLogs) and
  * reading per-id state; writes register/attest/revoke/delegate/deprecate and
  * submits V2 reputation proofs to OpaqueReputationVerifierV2.
- *
- * Mirrors the role of the Solana lib/programs.ts, on Ethereum contracts.
  */
 
 import {

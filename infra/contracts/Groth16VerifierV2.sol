@@ -3,16 +3,11 @@
     Groth16 verifier for the Opaque Cash V2 stealth-reputation circuit
     (`circuits/v2/stealth_reputation.circom`, 4 public signals).
 
-    This follows the snarkjs verifier template (Copyright 2021 0KIMS association,
-    GPL-3.0). The verification-key constants below are transcribed from the V2
-    circuit's `verification_key.json` — the SAME key the Solana on-chain verifier
-    uses — so a V2 proof verifies identically on Ethereum and Solana.
+    snarkjs verifier template (Copyright 2021 0KIMS association, GPL-3.0) with the
+    verification key from the V2 circuit's verification_key.json.
 
-    Public signals (snarkjs order = circuit public-input declaration order):
-      [0] merkle_root
-      [1] attestation_id    (= schema_id)
-      [2] external_nullifier
-      [3] nullifier_hash
+    Public signals: [0] merkle_root, [1] attestation_id, [2] external_nullifier,
+    [3] nullifier_hash.
 */
 
 pragma solidity >=0.7.0 <0.9.0;

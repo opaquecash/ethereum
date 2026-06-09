@@ -3,7 +3,6 @@
  *
  * For schemas the connected wallet owns: deprecate, add/remove delegates, update
  * resolver. Lists attestations issued under those schemas with a revoke action.
- * Ported from the Solana ManageView, backed by the viem data layer.
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";

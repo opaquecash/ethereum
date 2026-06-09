@@ -3,7 +3,6 @@
  *
  * Lets a schema authority or delegate issue a schema-bound attestation to a
  * recipient stealth address via the OpaqueAttestationRegistry contract.
- * Ported from the Solana AttestationManager, backed by the viem data layer.
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -46,7 +45,7 @@ function isRecipientPlausible(s: string): boolean {
 /** Resolve the recipient input to the 32-byte stealth-address hash the
  *  attestation is bound to. A meta-address derives a one-time stealth address
  *  (DKSAP) which is then hashed; a stealth address is hashed directly; a
- *  32-byte value is used as-is. Mirrors the Solana AttestationManager. */
+ *  32-byte value is used as-is. */
 function resolveStealthAddressHash(input: string): {
   hash: Hex;
   stealthAddress?: Address;

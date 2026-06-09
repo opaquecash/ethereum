@@ -1,5 +1,5 @@
 /**
- * Phase 3 stealth lifecycle — public API.
+ * Stealth lifecycle — public API.
  * Use these together: StealthScanner (discovery), VaultStore (persistence), getStealthWallet + withdrawStealthFunds (spending).
  */
 

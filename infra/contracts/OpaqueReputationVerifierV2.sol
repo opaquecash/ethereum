@@ -2,20 +2,16 @@
 pragma solidity ^0.8.20;
 
 /// @title OpaqueReputationVerifierV2
-/// @notice V2 on-chain verifier for Opaque Cash Programmable Stealth Reputation.
-///         Verifies Groth16 proofs from the V2 `stealth_reputation` circuit — a proof
-///         that the prover owns a stealth address holding a schema-bound attestation,
-///         without revealing the address. Mirrors the Solana `reputation-verifier`
-///         program's V2 path (`verify_proof_v2`).
+/// @notice Verifies Groth16 proofs from the V2 stealth_reputation circuit: that the
+///         prover holds a schema-bound attestation at a stealth address, without
+///         revealing the address. Tracks valid Merkle roots and spent nullifiers.
 /// @dev    Public signals (snarkjs order = circuit declaration order):
 ///           [0] merkle_root
-///           [1] attestation_id      (= schema_id; schema binding is enforced inside the circuit)
+///           [1] attestation_id      (= schema_id; schema binding enforced in-circuit)
 ///           [2] external_nullifier
 ///           [3] nullifier_hash      (= Poseidon(stealth_pk, external_nullifier))
-///         This is a NEW contract deployed alongside the V1 OpaqueReputationVerifier;
-///         V1 is left untouched. The leaf/tree are built off-chain (Poseidon over private
-///         values), and the Merkle root is submitted here by the admin/relayer — so no
-///         on-chain Poseidon is required, exactly as on Solana.
+///         The leaf/tree are built off-chain; the admin submits the Merkle root, so
+///         no on-chain Poseidon is needed.
 interface IGroth16VerifierV2 {
     function verifyProof(
         uint256[2] calldata pA,

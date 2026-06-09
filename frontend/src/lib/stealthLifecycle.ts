@@ -1,5 +1,5 @@
 /**
- * Opaque Cash Phase 3: Stealth fund discovery and spending lifecycle.
+ * Stealth fund discovery and spending lifecycle.
  * - StealthScanner: historical sync + real-time Announcement listener + WASM filter
  * - VaultStore: persistent owned stealth addresses (see store/vaultStore)
  * - getStealthWallet / withdrawStealthFunds: key reconstruction and withdrawal

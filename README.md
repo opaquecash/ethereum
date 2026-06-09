@@ -90,12 +90,23 @@ Use it alongside the SDK README when you’re wiring **Graph-style announcement 
 
 ## Contracts (Sepolia)
 
+**Stealth payments (DKSAP)**
+
 | | |
 |:---|:---|
 | **StealthMetaAddressRegistry** | [0x77425e04163d608B876c7f50E34A378624A12067](https://sepolia.etherscan.io/address/0x77425e04163d608B876c7f50E34A378624A12067) |
 | **StealthAddressAnnouncer** | [0x840f72249A8bF6F10b0eB64412E315efBD730865](https://sepolia.etherscan.io/address/0x840f72249A8bF6F10b0eB64412E315efBD730865) |
-| **Groth16Verifier** | [0x78A169b6E308Fd5BfAfc728f216CdB06EcEdde06](https://sepolia.etherscan.io/address/0x78A169b6E308Fd5BfAfc728f216CdB06EcEdde06) |
-| **OpaqueReputationVerifier** | [0x30B750Ae9851e104F8dbB4B8082b1a07a34885B0](https://sepolia.etherscan.io/address/0x30B750Ae9851e104F8dbB4B8082b1a07a34885B0) |
+
+**Programmable Stealth Reputation (V2)**
+
+| | |
+|:---|:---|
+| **OpaqueSchemaRegistry** | [0xAA5F3942117bD48E7Cd81A500A8b7Bbb122ae80f](https://sepolia.etherscan.io/address/0xAA5F3942117bD48E7Cd81A500A8b7Bbb122ae80f) |
+| **OpaqueAttestationRegistry** | [0x049aF9CBB62387034CDd5403794a94E9c000ACCc](https://sepolia.etherscan.io/address/0x049aF9CBB62387034CDd5403794a94E9c000ACCc) |
+| **OpaqueReputationVerifierV2** | [0x18cEc2812953c2E9bcADE20CbF6415BD36aEb44f](https://sepolia.etherscan.io/address/0x18cEc2812953c2E9bcADE20CbF6415BD36aEb44f) |
+| **Groth16VerifierV2** | [0x49A212bdbc52F1cb6C93623FC7814a61Fc71ddB5](https://sepolia.etherscan.io/address/0x49A212bdbc52F1cb6C93623FC7814a61Fc71ddB5) |
+
+> PSR V1 is discontinued. New systems use the V2 schema/attestation contracts above.
 
 ---
 

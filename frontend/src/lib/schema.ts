@@ -2,8 +2,7 @@
  * Schema Registry — V2 Stealth Reputation Protocol (Ethereum)
  *
  * Types and client-side utilities for the OpaqueSchemaRegistry contract. A schema
- * defines an attestation class and controls who may issue it. Mirrors the Solana
- * schema-registry client, adapted to viem + the deployed Ethereum contract.
+ * defines an attestation class and controls who may issue it.
  */
 
 import { encodePacked, sha256, type Address, type Hex } from "viem";
@@ -18,7 +17,7 @@ export interface FieldDef {
 }
 
 export interface SchemaV2 {
-  /** Stable id (== schemaId); kept for parity with the Solana client. */
+  /** Stable id (== schemaId). */
   address: string;
   /** schemaId = sha256(authority || name || version) as 0x-hex (bytes32). */
   schemaId: string;

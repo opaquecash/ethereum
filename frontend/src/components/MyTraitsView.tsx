@@ -3,8 +3,7 @@
  *
  * Scans cached Announcement events with the connected wallet's viewing key via
  * the V2 WASM scanner (scan_attestations_v2_wasm), surfaces the matched traits,
- * and lets the user prove one via ProofGeneratorModal. Ported from the Solana
- * MyTraitsView.
+ * and lets the user prove one via ProofGeneratorModal.
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";

@@ -2,15 +2,14 @@
  * Attestation Engine V2 — client-side interaction layer (Ethereum)
  *
  * Types and helpers for the OpaqueAttestationRegistry contract: uid computation,
- * attestation-data encode/decode, and display utilities. Mirrors the Solana
- * attestation-engine-v2 client, adapted to viem + the deployed Ethereum contract.
+ * attestation-data encode/decode, and display utilities.
  */
 
 import { encodePacked, sha256, type Address, type Hex } from "viem";
 import { z } from "zod";
 
 export interface AttestationV2 {
-  /** Stable id (== uid); kept for parity with the Solana client. */
+  /** Stable id (== uid). */
   address: string;
   /** uid = sha256(schema_id || issuer || stealth_address_hash || block) as 0x-hex. */
   uid: string;

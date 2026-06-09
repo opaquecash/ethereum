@@ -5,15 +5,13 @@ import {IOpaqueSchemaRegistry} from "./interfaces/IOpaqueSchemaRegistry.sol";
 import {IOpaqueResolver} from "./interfaces/IOpaqueResolver.sol";
 
 /// @title OpaqueAttestationRegistry
-/// @notice Ethereum mirror of the Solana `attestation-engine-v2` program. Issues
-///         schema-bound attestations to stealth addresses: only a schema's authority
-///         or a registered delegate may attest, and only while the schema is active.
-///         Revocation is authority-only and preserves the attestation data for audit.
+/// @notice Issues schema-bound attestations to stealth addresses. Only a schema's
+///         authority or a registered delegate may attest, and only while the schema
+///         is active. Revocation is authority-only and preserves the data for audit.
 /// @dev    The ZK Merkle tree of attestation leaves is built off-chain by provers
-///         (the leaf commits to private values `stealth_pk`/`nonce`); the root is
-///         submitted to OpaqueReputationVerifierV2. This registry is the canonical,
-///         queryable record of issued attestations — exactly like the Solana PDAs.
-///         The Solana "slot" is modelled with `block.number`.
+///         (the leaf commits to the private `stealth_pk`/`nonce`); its root is
+///         submitted to OpaqueReputationVerifierV2. This is the canonical on-chain
+///         record of issued attestations. Block numbers stand in for time.
 contract OpaqueAttestationRegistry {
     // =========================================================================
     // Limits
@@ -85,7 +83,7 @@ contract OpaqueAttestationRegistry {
     // =========================================================================
 
     /// @notice Compute the deterministic attestation uid.
-    /// @dev Matches Solana: SHA256(schema_id || issuer || stealth_address_hash || slot).
+    /// @dev SHA256(schemaId || issuer || stealthAddressHash || blockNumber).
     function computeUid(
         bytes32 schemaId,
         address issuer,

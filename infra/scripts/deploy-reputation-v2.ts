@@ -1,8 +1,8 @@
 /**
  * Deploy the V2 Programmable Stealth Reputation stack:
- *   - Groth16VerifierV2        (4 public signals; vkey == Solana V2 circuit)
- *   - OpaqueSchemaRegistry      (mirror of Solana schema-registry)
- *   - OpaqueAttestationRegistry (mirror of Solana attestation-engine-v2)
+ *   - Groth16VerifierV2         (4 public signals)
+ *   - OpaqueSchemaRegistry      (attestation schema registry)
+ *   - OpaqueAttestationRegistry (schema-bound attestation issuance)
  *   - OpaqueReputationVerifierV2 (V2 proof verifier + root/nullifier registry)
  *
  * Writes addresses + ABIs to the frontend so the dashboard can use the V2 PSR system.

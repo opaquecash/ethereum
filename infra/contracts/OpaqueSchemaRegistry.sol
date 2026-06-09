@@ -4,16 +4,14 @@ pragma solidity ^0.8.20;
 import {IOpaqueSchemaRegistry} from "./interfaces/IOpaqueSchemaRegistry.sol";
 
 /// @title OpaqueSchemaRegistry
-/// @notice Ethereum mirror of the Solana `schema-registry` program for Opaque Cash
-///         Programmable Stealth Reputation (PSR) V2. A schema declares a reusable
-///         attestation type: its authority, optional resolver hook, whether its
-///         attestations are revocable, an ABI-style field layout, and a set of
-///         delegate issuers. Attestations (see OpaqueAttestationRegistry) bind to a
-///         schema and must be issued by the authority or a delegate.
-/// @dev The on-chain "slot" of the Solana program is modelled with `block.number`.
+/// @notice Registry of attestation schemas. A schema declares its authority, an
+///         optional resolver hook, whether its attestations are revocable, an
+///         ABI-style field layout, and a set of delegate issuers. Attestations bind
+///         to a schema and may only be issued by the authority or a delegate.
+///         Expiry is expressed as a block number.
 contract OpaqueSchemaRegistry is IOpaqueSchemaRegistry {
     // =========================================================================
-    // Limits (match the Solana program's account sizing)
+    // Limits
     // =========================================================================
 
     uint256 public constant MAX_NAME_BYTES = 64;
@@ -77,7 +75,7 @@ contract OpaqueSchemaRegistry is IOpaqueSchemaRegistry {
     // =========================================================================
 
     /// @notice Computes the deterministic schema id for a given authority/name/version.
-    /// @dev Matches the Solana program: SHA256(authority || name || version=1).
+    /// @dev SHA256(authority || name || SCHEMA_VERSION).
     function computeSchemaId(address authority, string memory name) public pure returns (bytes32) {
         return sha256(abi.encodePacked(authority, bytes(name), SCHEMA_VERSION));
     }

@@ -4,7 +4,7 @@
  * Builds the V2 stealth_reputation witness from a discovered trait's leaf
  * preimage, generates a Groth16 proof with snarkjs (shared circuit wasm + zkey),
  * and lets the user COPY the proof+public-signals or, optionally, submit it
- * on-chain to OpaqueReputationVerifierV2. Ported from the Solana modal.
+ * on-chain to OpaqueReputationVerifierV2.
  */
 
 import { useState } from "react";

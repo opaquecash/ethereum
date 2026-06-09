@@ -4,11 +4,8 @@
  * Allows issuers to define and register attestation schemas on-chain via the
  * OpaqueSchemaRegistry contract. A schema specifies the field layout,
  * revocability, optional expiry (as a block number), and an optional resolver
- * contract for custom attestation logic.
- *
- * Ported from the Solana SchemaStudio, preserving its layout, sections, and
- * flows, but backed by the viem-based data layer (lib/psr, lib/schema) instead
- * of @solana/web3.js.
+ * contract for custom attestation logic. Backed by the viem data layer
+ * (lib/psr, lib/schema).
  */
 
 import { useState, useId, useEffect, useCallback, useMemo } from "react";

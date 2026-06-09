@@ -3,8 +3,6 @@ pragma solidity ^0.8.20;
 
 /// @title IOpaqueSchemaRegistry
 /// @notice Read surface of the schema registry used by the attestation engine.
-///         Mirrors the validation helpers of the Solana `schema-registry` program
-///         (`is_authorized_issuer`, `is_active`).
 interface IOpaqueSchemaRegistry {
     /// @notice Whether a schema with this id has been registered.
     function exists(bytes32 schemaId) external view returns (bool);
