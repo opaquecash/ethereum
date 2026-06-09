@@ -7,6 +7,7 @@
 import type { Address } from "viem";
 
 import deployedJson from "./deployed-addresses.json";
+import { reputationV2Addresses } from "./reputationV2Addresses";
 
 export type ChainContractConfig = {
   registry: Address;
@@ -14,6 +15,11 @@ export type ChainContractConfig = {
   tokens: { USDC: Address; USDT: Address };
   /** First block where announcer exists; scanner never looks before this. Set by deploy script. */
   deployedBlock?: number;
+  /** V2 Programmable Stealth Reputation contracts (set by deploy-reputation-v2). */
+  schemaRegistry?: Address;
+  attestationRegistry?: Address;
+  groth16VerifierV2?: Address;
+  reputationVerifierV2?: Address;
 };
 
 /** Placeholder for chains not yet deployed. */
@@ -38,6 +44,10 @@ const STATIC_CONFIG: Record<number, ChainContractConfig> = {
       USDT: "0x6Ff8Afb2aA9eB5A89Ce86c44DD460bD17C92f644",
     },
     deployedBlock: 5_500_000,
+    schemaRegistry: reputationV2Addresses.OpaqueSchemaRegistry as Address,
+    attestationRegistry: reputationV2Addresses.OpaqueAttestationRegistry as Address,
+    groth16VerifierV2: reputationV2Addresses.Groth16VerifierV2 as Address,
+    reputationVerifierV2: reputationV2Addresses.OpaqueReputationVerifierV2 as Address,
   },
   // 31337: {
   //   registry: "0x43ca3D2C94be00692D207C6A1e60D8B325c6f12f" as Address,
