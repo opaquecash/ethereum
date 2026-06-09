@@ -21,7 +21,7 @@
   &nbsp;·&nbsp;
   <a href="https://youtu.be/NAo7j0-Yqa8">Demo</a>
   <br /><br />
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-5c7cfa?style=flat-square" alt="MIT License" /></a>
+  <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/license-GPLv3-5c7cfa?style=flat-square" alt="GPLv3 License" /></a>
 </p>
 
 ---
@@ -88,6 +88,30 @@ Use it alongside the SDK README when you’re wiring **Graph-style announcement 
 
 ---
 
+## Programmable Stealth Reputation (PSR)
+
+PSR is Opaque's privacy-preserving reputation layer: a stealth identity can hold **schema-bound attestations** and later prove it holds one—to a contract or an app—without revealing the stealth address, the wallet behind it, or any unrelated attestation. Ethereum runs the canonical **V2** design; V1 is discontinued.
+
+**Three on-chain pieces** (all on Sepolia, addresses below):
+
+- **`OpaqueSchemaRegistry`** — an issuer registers a *schema*: a named attestation type with an ABI-style field layout (e.g. `bool passed, u64 score`), a revocability flag, an optional expiry block, an optional resolver hook, and up to 10 delegate issuers. The schema creator is its permanent **authority**; only the authority or a delegate may issue under it. `schema_id = sha256(authority ‖ name ‖ version)`.
+- **`OpaqueAttestationRegistry`** — an authorized issuer `attest`s a schema-bound attestation to a recipient's **stealth-address hash** (never the address itself), with ABI-encoded data (≤ 512 bytes), an optional expiry, and an optional reference to a prior attestation. The authority can `revoke` when the schema is revocable; the data is preserved for audit. `uid = sha256(schema_id ‖ issuer ‖ stealthAddressHash ‖ blockNumber)`.
+- **`OpaqueReputationVerifierV2`** + **`Groth16VerifierV2`** — verify a Groth16 proof from the V2 `stealth_reputation` circuit (BN254, Poseidon, depth-20 Merkle tree) through the `ecPairing` precompile. The verifier tracks valid Merkle roots (admin-submitted, 1-hour expiry) and spent nullifiers, so each proof is consumable once per action.
+
+**End-to-end flow**
+
+1. **Register** — an issuer creates a schema in `OpaqueSchemaRegistry` (Schema Studio in the dashboard).
+2. **Issue** — the issuer attests to a recipient's stealth identity and emits an announcement carrying the V2 attestation metadata (Attestation Manager).
+3. **Discover** — the recipient scans announcements with their viewing key (the Rust → WASM scanner) and sees matching traits on the **My Traits** tab, entirely client-side.
+4. **Prove** — for a chosen action (`external_nullifier`), the recipient builds a Groth16 proof that they own a stealth address carrying a valid attestation under schema X, revealing only the schema, the action scope, and a one-time `nullifier_hash`. Public signals: `[merkle_root, attestation_id, external_nullifier, nullifier_hash]`.
+5. **Verify** — a contract or service calls `verifyReputation(...)`; the proof is checked against a known Merkle root and the nullifier is consumed, so replaying the same action fails.
+
+**Public vs private.** Public: the schema being proven, the action scope, the nullifier hash, and—by storage—a schema's name/field-definitions and each attestation's `data` and `issuer`. Private: the stealth private key, the stealth address, the wallet behind it, the transaction graph, and any unrelated attestation. Privacy comes from stealth-address unlinkability plus the ZK proof, **not** from hiding attestation contents—encrypt or hash sensitive `data`.
+
+The full cross-chain specification is in [`spec/PSR.md`](https://github.com/opaquecash/spec/blob/main/PSR.md).
+
+---
+
 ## Contracts (Sepolia)
 
 **Stealth payments (DKSAP)**
@@ -119,5 +143,5 @@ Issues and PRs are welcome—whether you’re fixing a doc typo, improving the S
 ---
 
 <p align="center">
-  <sub>MIT License · Built in public · <a href="https://opaque.cash">opaque.cash</a></sub>
+  <sub>GPLv3 License · Built in public · <a href="https://opaque.cash">opaque.cash</a></sub>
 </p>
