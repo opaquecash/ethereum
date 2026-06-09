@@ -53,14 +53,14 @@ Under the hood, heavy lifting uses **Rust → WebAssembly** for scanning and cry
 The **`@opaquecash/opaque`** package is the unified client: configure **chain + RPC + wallet signature + WASM**, pass **indexer-shaped announcements**, and get **calldata** for register/announce flows, **owned outputs**, **balances by token**, and **PSR traits**—without forcing a specific indexer or UI.
 
 ```bash
-cd sdk && npm install && npm run build
+npm install @opaquecash/opaque
 ```
 
 Point your app at the published WASM entry (or your own build):
 
 `https://www.opaque.cash/pkg/cryptography.js`
 
-Full API surface, types, and lower-level packages (`@opaquecash/stealth-*`, `@opaquecash/psr-*`) live in **[sdk/packages/opaque/README.md](sdk/packages/opaque/README.md)**.
+Full API surface, types, and lower-level packages (`@opaquecash/stealth-*`, `@opaquecash/psr-*`) live in the canonical SDK repo: [opaquecash/sdk](https://github.com/opaquecash/sdk).
 
 ---
 
@@ -81,7 +81,7 @@ Use it alongside the SDK README when you’re wiring **Graph-style announcement 
 | Path | What you’ll find |
 |------|------------------|
 | [`frontend/`](frontend/) | Reference wallet UI (balances, send, receive, private balance) |
-| [`sdk/`](sdk/) | **`@opaquecash/opaque`** and modular stealth + PSR packages |
+| TypeScript SDK | Canonical packages [`@opaquecash/opaque`](https://www.npmjs.com/package/@opaquecash/opaque) and modular `@opaquecash/{stealth,psr}-*` ([opaquecash/sdk](https://github.com/opaquecash/sdk)); was the in-repo `sdk/` |
 | [`docs/`](docs/) | Developer documentation site |
 | [`infra/`](infra/) | Hardhat contracts, deploy scripts |
 | Rust WASM scanner core | Canonical crate [`opaque-scanner`](https://crates.io/crates/opaque-scanner) ([opaquecash/scanner](https://github.com/opaquecash/scanner)); was the in-repo `scanner/` |
