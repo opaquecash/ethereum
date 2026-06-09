@@ -132,6 +132,54 @@ export function encode_attestation_metadata_wasm(view_tag, attestation_id) {
 }
 
 /**
+ * Encodes V2 attestation metadata for use in stealth announcements.
+ *
+ * Layout: view_tag(1) || 0xB2(1) || schema_id(32) || issuer(32) || attestation_uid(32) || nonce(32)
+ *
+ * # Arguments
+ * * `view_tag` - View tag byte (0-255)
+ * * `schema_id_hex` - Schema identifier as 64-char hex string (32 bytes)
+ * * `issuer_hex` - Issuer pubkey as 64-char hex string (32 bytes)
+ * * `attestation_uid_hex` - Attestation UID as 64-char hex string (32 bytes)
+ * * `nonce_hex` - Random nonce as 64-char hex string (32 bytes)
+ *
+ * # Returns
+ * Hex-encoded metadata bytes (0x-prefixed).
+ * @param {number} view_tag
+ * @param {string} schema_id_hex
+ * @param {string} issuer_hex
+ * @param {string} attestation_uid_hex
+ * @param {string} nonce_hex
+ * @returns {string}
+ */
+export function encode_v2_attestation_metadata_wasm(view_tag, schema_id_hex, issuer_hex, attestation_uid_hex, nonce_hex) {
+    let deferred6_0;
+    let deferred6_1;
+    try {
+        const ptr0 = passStringToWasm0(schema_id_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(issuer_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(attestation_uid_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(nonce_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ret = wasm.encode_v2_attestation_metadata_wasm(view_tag, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        var ptr5 = ret[0];
+        var len5 = ret[1];
+        if (ret[3]) {
+            ptr5 = 0; len5 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred6_0 = ptr5;
+        deferred6_1 = len5;
+        return getStringFromWasm0(ptr5, len5);
+    } finally {
+        wasm.__wbindgen_free(deferred6_0, deferred6_1, 1);
+    }
+}
+
+/**
  * Generates the full ZK-circuit witness for a specific trait.
  *
  * Builds a local Merkle tree from the given attestations, finds the first
@@ -179,6 +227,57 @@ export function generate_reputation_witness(attestations_json, target_trait_id, 
     }
 }
 
+/**
+ * Generates a V2 ZK-circuit witness for a specific schema-bound trait.
+ *
+ * The V2 witness uses the new 5-input leaf:
+ *   Poseidon(stealth_pk, schema_id, issuer_pk_x, trait_data_hash, nonce)
+ *
+ * # Arguments
+ * * `attestations_v2_json` - JSON array of V2StealthAttestation (from scan_attestations_v2_wasm)
+ * * `target_schema_id_hex` - The schema_id to prove (64-char hex)
+ * * `stealth_privkey_bytes` - 32-byte stealth private key (Uint8Array)
+ * * `trait_data_hash_hex` - Poseidon hash of the decoded data fields (64-char hex string)
+ * * `external_nullifier` - Action-scoped nonce as decimal string
+ *
+ * # Returns
+ * JSON object with all circuit inputs (private + public) for snarkjs.fullProve.
+ * @param {string} attestations_v2_json
+ * @param {string} target_schema_id_hex
+ * @param {Uint8Array} stealth_privkey_bytes
+ * @param {string} trait_data_hash_hex
+ * @param {string} external_nullifier
+ * @returns {string}
+ */
+export function generate_reputation_witness_v2(attestations_v2_json, target_schema_id_hex, stealth_privkey_bytes, trait_data_hash_hex, external_nullifier) {
+    let deferred7_0;
+    let deferred7_1;
+    try {
+        const ptr0 = passStringToWasm0(attestations_v2_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(target_schema_id_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArray8ToWasm0(stealth_privkey_bytes, wasm.__wbindgen_malloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(trait_data_hash_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passStringToWasm0(external_nullifier, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len4 = WASM_VECTOR_LEN;
+        const ret = wasm.generate_reputation_witness_v2(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+        var ptr6 = ret[0];
+        var len6 = ret[1];
+        if (ret[3]) {
+            ptr6 = 0; len6 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred7_0 = ptr6;
+        deferred7_1 = len6;
+        return getStringFromWasm0(ptr6, len6);
+    } finally {
+        wasm.__wbindgen_free(deferred7_0, deferred7_1, 1);
+    }
+}
+
 export function init() {
     wasm.init();
 }
@@ -212,6 +311,59 @@ export function reconstruct_signing_key_wasm(master_spend_priv_bytes, master_vie
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Scans V2 announcements for schema-bound attestations belonging to this recipient.
+ *
+ * Unlike V1, V2 requires a schema registry snapshot to validate issuer authorization.
+ * Rogue traits (issued by non-delegates) are filtered out before results are returned.
+ *
+ * # Arguments
+ * * `announcements_json` - JSON array of announcement objects (same format as V1)
+ * * `schemas_json` - JSON array of SchemaInfo objects fetched from schema_registry program
+ * * `view_privkey_bytes` - 32-byte viewing private key (Uint8Array)
+ * * `spend_pubkey_bytes` - 33-byte spending public key (compressed, Uint8Array)
+ * * `current_slot` - Current Solana slot for expiry checks
+ * * `trusted_issuers_json` - Optional JSON array of trusted issuer hex strings; pass "" to skip
+ *
+ * # Returns
+ * JSON array of V2StealthAttestation objects.
+ * @param {string} announcements_json
+ * @param {string} schemas_json
+ * @param {Uint8Array} view_privkey_bytes
+ * @param {Uint8Array} spend_pubkey_bytes
+ * @param {bigint} current_slot
+ * @param {string} trusted_issuers_json
+ * @returns {string}
+ */
+export function scan_attestations_v2_wasm(announcements_json, schemas_json, view_privkey_bytes, spend_pubkey_bytes, current_slot, trusted_issuers_json) {
+    let deferred7_0;
+    let deferred7_1;
+    try {
+        const ptr0 = passStringToWasm0(announcements_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(schemas_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArray8ToWasm0(view_privkey_bytes, wasm.__wbindgen_malloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passArray8ToWasm0(spend_pubkey_bytes, wasm.__wbindgen_malloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passStringToWasm0(trusted_issuers_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len4 = WASM_VECTOR_LEN;
+        const ret = wasm.scan_attestations_v2_wasm(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, current_slot, ptr4, len4);
+        var ptr6 = ret[0];
+        var len6 = ret[1];
+        if (ret[3]) {
+            ptr6 = 0; len6 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred7_0 = ptr6;
+        deferred7_1 = len6;
+        return getStringFromWasm0(ptr6, len6);
+    } finally {
+        wasm.__wbindgen_free(deferred7_0, deferred7_1, 1);
+    }
 }
 
 /**
