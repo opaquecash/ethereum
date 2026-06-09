@@ -132,6 +132,15 @@ The full cross-chain specification is in [`spec/PSR.md`](https://github.com/opaq
 
 > PSR V1 is discontinued. New systems use the V2 schema/attestation contracts above.
 
+**Universal Announcement Bus (Wormhole)**
+
+Cross-chain announcement relay between Sepolia and Solana devnet via the Wormhole Core Contract (`0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78`). See [`spec/UAB.md`](https://github.com/opaquecash/spec/blob/main/UAB.md).
+
+| | |
+|:---|:---|
+| **UABSender** | [0x872787c0BD1A0C71e6D1be5a144EB044e0CB2069](https://sepolia.etherscan.io/address/0x872787c0BD1A0C71e6D1be5a144EB044e0CB2069) |
+| **UABReceiver** | [0x9eF189f7a263F870Cf80f9A89d1349A6AF7b15cF](https://sepolia.etherscan.io/address/0x9eF189f7a263F870Cf80f9A89d1349A6AF7b15cF) |
+
 ---
 
 ## Community
