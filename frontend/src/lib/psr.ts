@@ -105,6 +105,9 @@ const SCHEMA_REGISTERED_EVENT = parseAbiItem(
 const ATTESTED_EVENT = parseAbiItem(
   "event Attested(bytes32 indexed uid, bytes32 indexed schemaId, address indexed issuer, bytes32 stealthAddressHash, uint256 expirationBlock, bytes32 refUid)"
 );
+const ANNOUNCEMENT_EVENT = parseAbiItem(
+  "event Announcement(uint256 indexed schemeId, address indexed stealthAddress, address indexed caller, bytes ephemeralPubKey, bytes metadata)"
+);
 
 // ---------------------------------------------------------------------------
 // Reads
@@ -261,6 +264,36 @@ export async function fetchAttestation(
 
 export async function getCurrentBlock(chainId: number): Promise<number> {
   return Number(await publicClientFor(chainId).getBlockNumber());
+}
+
+export type ScanAnnouncement = {
+  stealthAddress: string;
+  ephemeralPubKey: string;
+  metadata: string;
+  txHash: string;
+  blockNumber: number;
+};
+
+/**
+ * Fetch StealthAddressAnnouncer announcements LIVE since the V2 deploy block, for
+ * the V2 scanner to match. Independent of the V1 announcement cache — the
+ * recipient does not need a prior balance/vault sync to discover their traits.
+ */
+export async function fetchV2Announcements(chainId: number): Promise<ScanAnnouncement[]> {
+  const cfg = getConfigForChain(chainId);
+  if (!cfg?.announcer) return [];
+  const client = publicClientFor(chainId);
+  const latest = await client.getBlockNumber();
+  const logs = await adaptiveCollect(V2_FROM_BLOCK, latest, (f, t) =>
+    client.getLogs({ address: cfg.announcer, event: ANNOUNCEMENT_EVENT, fromBlock: f, toBlock: t })
+  );
+  return logs.map((l) => ({
+    stealthAddress: (l.args.stealthAddress ?? "") as string,
+    ephemeralPubKey: (l.args.ephemeralPubKey ?? "0x") as string,
+    metadata: (l.args.metadata ?? "0x") as string,
+    txHash: l.transactionHash ?? "",
+    blockNumber: Number(l.blockNumber ?? 0n),
+  }));
 }
 
 // ---------------------------------------------------------------------------

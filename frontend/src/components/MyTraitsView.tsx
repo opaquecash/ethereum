@@ -13,8 +13,7 @@ import { useWallet } from "../hooks/useWallet";
 import { useKeys } from "../context/KeysContext";
 import { useOpaqueWasm } from "../hooks/useOpaqueWasm";
 import { useSchemaStore, type V2DiscoveredTrait } from "../store/schemaStore";
-import { getV2Config, fetchAllSchemas, getCurrentBlock } from "../lib/psr";
-import { getAnnouncementsForChain } from "../lib/opaqueCache";
+import { getV2Config, fetchAllSchemas, getCurrentBlock, fetchV2Announcements } from "../lib/psr";
 import { hexToBytes } from "../lib/attestationV2";
 import { ProofGeneratorModal } from "./ProofGeneratorModal";
 
@@ -70,17 +69,17 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
       const master = getMasterKeys();
       const [schemas, announcements, currentBlock] = await Promise.all([
         fetchAllSchemas(chainId),
-        getAnnouncementsForChain(chainId),
+        fetchV2Announcements(chainId),
         getCurrentBlock(chainId),
       ]);
       setSchemas(schemas);
 
       const announcementsPayload = announcements.map((a) => ({
-        stealthAddress: a.args.stealthAddress ?? "",
-        viewTag: parseInt((a.args.metadata ?? "0x00").slice(2, 4) || "0", 16),
-        ephemeralPubKey: a.args.ephemeralPubKey ?? "0x",
-        metadata: a.args.metadata ?? "0x",
-        txHash: a.transactionHash,
+        stealthAddress: a.stealthAddress,
+        viewTag: parseInt((a.metadata || "0x00").slice(2, 4) || "0", 16),
+        ephemeralPubKey: a.ephemeralPubKey,
+        metadata: a.metadata,
+        txHash: a.txHash,
         blockNumber: a.blockNumber,
       }));
 
