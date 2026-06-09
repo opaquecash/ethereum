@@ -29,9 +29,10 @@ import { getConfigForChain } from "../contracts/contract-config";
 import { computeSchemaId, type SchemaV2 } from "./schema";
 import { computeUid, type AttestationV2 } from "./attestationV2";
 
-/** First block to scan for V2 events (the V2 stack was deployed just before this). */
-export const V2_FROM_BLOCK = 11_019_000n;
-const LOG_CHUNK = 9_000n;
+/** The V2 PSR stack was deployed at this Sepolia block; never scan before it. */
+export const V2_FROM_BLOCK = 11_019_444n;
+/** Initial getLogs window; shrinks automatically when an RPC rejects the range. */
+const LOG_CHUNK = 45_000n;
 
 export type V2Config = {
   schemaRegistry: Address;
@@ -109,25 +110,75 @@ const ATTESTED_EVENT = parseAbiItem(
 // Reads
 // ---------------------------------------------------------------------------
 
-async function chunkRanges(client: PublicClient, fromBlock: bigint): Promise<Array<{ from: bigint; to: bigint }>> {
-  const latest = await client.getBlockNumber();
-  const ranges: Array<{ from: bigint; to: bigint }> = [];
-  for (let start = fromBlock; start <= latest; start += LOG_CHUNK + 1n) {
-    const end = start + LOG_CHUNK > latest ? latest : start + LOG_CHUNK;
-    ranges.push({ from: start, to: end });
+/** Detects an RPC "block range too large" error and any suggested toBlock. */
+function rangeError(e: unknown): { suggestTo: bigint | null } | null {
+  const parts: string[] = [];
+  if (e && typeof e === "object") {
+    for (const k of ["message", "details", "shortMessage"] as const) {
+      const v = (e as Record<string, unknown>)[k];
+      if (typeof v === "string") parts.push(v);
+    }
+    const cause = (e as { cause?: unknown }).cause;
+    if (cause && typeof cause === "object") {
+      const cm = (cause as Record<string, unknown>).message;
+      if (typeof cm === "string") parts.push(cm);
+    }
   }
-  return ranges;
+  const msg = parts.join(" ") || String(e);
+  if (/block range|10 block|range is too large|too large|too many results|limited|-32600|-32005/i.test(msg)) {
+    const m = /\[\s*(0x[0-9a-fA-F]+)\s*,\s*(0x[0-9a-fA-F]+)\s*\]/.exec(msg);
+    return { suggestTo: m ? BigInt(m[2]) : null };
+  }
+  return null;
+}
+
+/**
+ * Collect logs over [from, to], adapting the window to whatever the RPC allows:
+ * one call on permissive RPCs; on tiers that cap eth_getLogs it shrinks the
+ * window to the provider's suggested range (parsed from the error) or halves it,
+ * so the scan still completes instead of failing with a 400.
+ */
+async function adaptiveCollect<T>(
+  from: bigint,
+  to: bigint,
+  fetch: (f: bigint, t: bigint) => Promise<T[]>
+): Promise<T[]> {
+  const out: T[] = [];
+  if (to < from) return out;
+  let cursor = from;
+  let step = to - from + 1n < LOG_CHUNK ? to - from + 1n : LOG_CHUNK;
+  if (step < 1n) step = 1n;
+  while (cursor <= to) {
+    const end = cursor + step - 1n > to ? to : cursor + step - 1n;
+    try {
+      out.push(...(await fetch(cursor, end)));
+      cursor = end + 1n;
+    } catch (e) {
+      const r = rangeError(e);
+      if (!r) throw e;
+      if (r.suggestTo !== null && r.suggestTo >= cursor && r.suggestTo < end) {
+        step = r.suggestTo - cursor + 1n;
+      } else if (end > cursor) {
+        step = (end - cursor + 1n) / 2n;
+        if (step < 1n) step = 1n;
+      } else {
+        throw e;
+      }
+    }
+  }
+  return out;
 }
 
 export async function fetchAllSchemas(chainId: number): Promise<SchemaV2[]> {
   const cfg = getV2Config(chainId);
   if (!cfg) return [];
   const client = publicClientFor(chainId);
+  const latest = await client.getBlockNumber();
+  const logs = await adaptiveCollect(V2_FROM_BLOCK, latest, (f, t) =>
+    client.getLogs({ address: cfg.schemaRegistry, event: SCHEMA_REGISTERED_EVENT, fromBlock: f, toBlock: t })
+  );
   const ids = new Set<Hex>();
-  for (const { from, to } of await chunkRanges(client, V2_FROM_BLOCK)) {
-    const logs = await client.getLogs({ address: cfg.schemaRegistry, event: SCHEMA_REGISTERED_EVENT, fromBlock: from, toBlock: to });
-    for (const l of logs) if (l.args.schemaId) ids.add(l.args.schemaId);
-  }
+  for (const l of logs) if (l.args.schemaId) ids.add(l.args.schemaId);
   const schemas = await Promise.all([...ids].map((id) => fetchSchema(chainId, id, client)));
   return schemas.filter((s): s is SchemaV2 => s != null);
 }
@@ -167,11 +218,12 @@ export async function fetchAllAttestations(chainId: number): Promise<Attestation
   const cfg = getV2Config(chainId);
   if (!cfg) return [];
   const client = publicClientFor(chainId);
+  const latest = await client.getBlockNumber();
+  const logs = await adaptiveCollect(V2_FROM_BLOCK, latest, (f, t) =>
+    client.getLogs({ address: cfg.attestationRegistry, event: ATTESTED_EVENT, fromBlock: f, toBlock: t })
+  );
   const uids = new Set<Hex>();
-  for (const { from, to } of await chunkRanges(client, V2_FROM_BLOCK)) {
-    const logs = await client.getLogs({ address: cfg.attestationRegistry, event: ATTESTED_EVENT, fromBlock: from, toBlock: to });
-    for (const l of logs) if (l.args.uid) uids.add(l.args.uid);
-  }
+  for (const l of logs) if (l.args.uid) uids.add(l.args.uid);
   const records = await Promise.all([...uids].map((uid) => fetchAttestation(chainId, uid, client)));
   return records.filter((a): a is AttestationV2 => a != null);
 }
