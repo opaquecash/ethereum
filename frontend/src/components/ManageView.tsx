@@ -103,9 +103,21 @@ export function ManageView({ onNavigate }: ManageViewProps = {}) {
           <h1 className="text-xl font-semibold text-white">Manage</h1>
           <p className="mt-1 text-sm text-mist">Administer your schemas and issued attestations.</p>
         </div>
-        <button onClick={() => void refresh()} className="rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-mist hover:text-white">
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {onNavigate && (
+            <>
+              <button onClick={() => onNavigate("schemas")} className="rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-mist hover:text-white">
+                New schema
+              </button>
+              <button onClick={() => onNavigate("attest")} className="rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-mist hover:text-white">
+                Issue attestation
+              </button>
+            </>
+          )}
+          <button onClick={() => void refresh()} className="rounded-lg border border-ink-700 px-3 py-1.5 text-xs text-mist hover:text-white">
+            Refresh
+          </button>
+        </div>
       </header>
 
       {!v2Configured && (

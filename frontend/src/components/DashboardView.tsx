@@ -49,8 +49,6 @@ const QUICK_LINKS: { id: Tab; label: string }[] = [
   { id: "balance", label: "Private balance" },
   { id: "history", label: "History" },
   { id: "my-traits", label: "My Traits" },
-  { id: "schemas", label: "Schemas" },
-  { id: "attest", label: "Issue Attestation" },
   { id: "manage", label: "Manage" },
 ];
 
