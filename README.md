@@ -84,7 +84,7 @@ Use it alongside the SDK README when you’re wiring **Graph-style announcement 
 | [`sdk/`](sdk/) | **`@opaquecash/opaque`** and modular stealth + PSR packages |
 | [`docs/`](docs/) | Developer documentation site |
 | [`infra/`](infra/) | Hardhat contracts, deploy scripts |
-| [`scanner/`](scanner/) | Rust WASM core; see [scanner/WASM_BUILD.md](scanner/WASM_BUILD.md) |
+| Rust WASM scanner core | Canonical crate [`opaque-scanner`](https://crates.io/crates/opaque-scanner) ([opaquecash/scanner](https://github.com/opaquecash/scanner)); was the in-repo `scanner/` |
 
 ---
 
