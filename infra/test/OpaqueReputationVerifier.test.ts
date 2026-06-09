@@ -5,17 +5,18 @@ import { getAddress, parseEther, keccak256, toHex, encodeAbiParameters, parseAbi
 
 describe("OpaqueReputationVerifier", () => {
   async function deployFixture() {
-    const [admin, user, other] = await hre.viem.getWalletClients();
+    const { viem } = await hre.network.connect();
+    const [admin, user, other] = await viem.getWalletClients();
 
     // Deploy a mock Groth16 verifier that always returns true
-    const mockVerifier = await hre.viem.deployContract("MockGroth16Verifier" as any);
+    const mockVerifier = await viem.deployContract("MockGroth16Verifier" as any);
 
-    const verifier = await hre.viem.deployContract("OpaqueReputationVerifier", [
+    const verifier = await viem.deployContract("OpaqueReputationVerifier", [
       mockVerifier.address,
       admin.account.address,
     ]);
 
-    const publicClient = await hre.viem.getPublicClient();
+    const publicClient = await viem.getPublicClient();
 
     return { verifier, mockVerifier, admin, user, other, publicClient };
   }
