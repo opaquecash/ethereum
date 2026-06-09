@@ -11,7 +11,9 @@ import type { EIP1193Provider, Hex } from "viem";
 import { useWallet } from "../hooks/useWallet";
 import { useToast } from "../context/ToastContext";
 import { parseFieldDefs, type SchemaV2 } from "../lib/schema";
-import { encodeAttestationData, ZERO_BYTES32 } from "../lib/attestationV2";
+import { encodeAttestationData, bytesToHex, hexToBytes } from "../lib/attestationV2";
+import { computeStealthAddressAndViewTag } from "../lib/stealth";
+import { keccak_256 } from "@noble/hashes/sha3";
 import { getV2Config, fetchAllSchemas, attest, getCurrentBlock } from "../lib/psr";
 import { useSchemaStore } from "../store/schemaStore";
 
@@ -19,8 +21,38 @@ export type AttestationManagerProps = {
   onNavigate?: (tab: string) => void;
 };
 
-function isBytes32(s: string): boolean {
-  return /^0x[0-9a-fA-F]{64}$/.test(s.trim());
+function recipientHexLen(s: string): number {
+  const v = s.trim();
+  return v.startsWith("0x") ? v.length - 2 : v.length;
+}
+
+/** A recipient input is plausible if it is a 66-byte meta-address, a 20-byte
+ *  stealth address, or an already-32-byte hash. */
+function isRecipientPlausible(s: string): boolean {
+  const v = s.trim();
+  if (!/^0x[0-9a-fA-F]+$/.test(v)) return false;
+  const n = recipientHexLen(v);
+  return n === 132 || n === 40 || n === 64;
+}
+
+/** Resolve the recipient input to the 32-byte stealth-address hash the
+ *  attestation is bound to. A meta-address derives a one-time stealth address
+ *  (DKSAP) which is then hashed; a stealth address is hashed directly; a
+ *  32-byte value is used as-is. Mirrors the Solana AttestationManager. */
+function resolveStealthAddressHash(input: string): { hash: Hex; stealthAddress?: string } {
+  const v = input.trim() as Hex;
+  const n = recipientHexLen(v);
+  if (n === 132) {
+    const { stealthAddress } = computeStealthAddressAndViewTag(v);
+    return { hash: bytesToHex(keccak_256(hexToBytes(stealthAddress))), stealthAddress };
+  }
+  if (n === 40) {
+    return { hash: bytesToHex(keccak_256(hexToBytes(v))), stealthAddress: v };
+  }
+  if (n === 64) {
+    return { hash: v };
+  }
+  throw new Error("Recipient must be a 66-byte meta-address, 20-byte stealth address, or 32-byte hash.");
 }
 
 export function AttestationManager({ onNavigate }: AttestationManagerProps = {}) {
@@ -40,7 +72,8 @@ export function AttestationManager({ onNavigate }: AttestationManagerProps = {})
   }, [schemasMap, walletAddress]);
 
   const [schemaId, setSchemaId] = useState<string>("");
-  const [stealthHash, setStealthHash] = useState<string>("");
+  const [recipientInput, setRecipientInput] = useState<string>("");
+  const [resolvedStealth, setResolvedStealth] = useState<string | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [hasExpiry, setHasExpiry] = useState(false);
   const [expiryBlock, setExpiryBlock] = useState("");
@@ -79,7 +112,7 @@ export function AttestationManager({ onNavigate }: AttestationManagerProps = {})
     v2Configured &&
     selectedSchema != null &&
     !selectedSchema.deprecated &&
-    isBytes32(stealthHash || ZERO_BYTES32) &&
+    isRecipientPlausible(recipientInput) &&
     !isSubmitting;
 
   const updateFieldValue = useCallback((name: string, value: string) => {
@@ -94,10 +127,8 @@ export function AttestationManager({ onNavigate }: AttestationManagerProps = {})
     setError(null);
     setLastUid(null);
     try {
-      const stealthAddressHash = (stealthHash.trim() || ZERO_BYTES32) as Hex;
-      if (!isBytes32(stealthAddressHash)) {
-        throw new Error("Stealth address hash must be 0x + 64 hex chars.");
-      }
+      const { hash: stealthAddressHash, stealthAddress } = resolveStealthAddressHash(recipientInput);
+      setResolvedStealth(stealthAddress ?? null);
 
       let expiration = 0n;
       if (hasExpiry) {
@@ -119,7 +150,7 @@ export function AttestationManager({ onNavigate }: AttestationManagerProps = {})
       setLastUid(uid);
       showToast("Attestation issued", { explorerTx: { chainId, txHash } });
       setFieldValues({});
-      setStealthHash("");
+      setRecipientInput("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to issue attestation.");
     } finally {
@@ -178,14 +209,19 @@ export function AttestationManager({ onNavigate }: AttestationManagerProps = {})
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-mist">
-            Recipient stealth address hash
+            Recipient meta-address
           </label>
           <input
-            value={stealthHash}
-            onChange={(e) => setStealthHash(e.target.value)}
-            placeholder="0x… (32-byte hash; defaults to zero)"
+            value={recipientInput}
+            onChange={(e) => setRecipientInput(e.target.value)}
+            placeholder="0x… recipient meta-address (66 bytes), stealth address, or 32-byte hash"
             className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 font-mono text-xs text-white"
           />
+          {resolvedStealth && (
+            <p className="mt-1 break-all font-mono text-[11px] text-mist/60">
+              Stealth address: {resolvedStealth}
+            </p>
+          )}
         </div>
 
         {selectedSchema && fieldDefs.length > 0 && (
