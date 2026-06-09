@@ -42,6 +42,23 @@ type ScanResult = {
   issuer_authorized: boolean;
 };
 
+/** Mask a long hex value, showing only the start and end. */
+function mask(s: string): string {
+  if (!s) return "—";
+  return s.length > 14 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s;
+}
+
+function TraitIcon() {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-ink-700 bg-ink-950 text-glow">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z" />
+        <path d="m9 12 2 2 4-4" />
+      </svg>
+    </span>
+  );
+}
+
 export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
   const { chainId, isConnected } = useWallet();
   const { isSetup, getMasterKeys } = useKeys();
@@ -58,6 +75,18 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proving, setProving] = useState<V2DiscoveredTrait | null>(null);
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return traits;
+    return traits.filter(
+      (t) =>
+        (t.schemaName || "").toLowerCase().includes(q) ||
+        t.issuer.toLowerCase().includes(q) ||
+        t.attestationUid.toLowerCase().includes(q)
+    );
+  }, [traits, query]);
 
   const v2Configured = getV2Config(chainId) != null;
 
@@ -168,48 +197,87 @@ export function MyTraitsView({ onNavigate }: MyTraitsViewProps = {}) {
 
       {!isConnected ? (
         <p className="text-sm text-mist">Connect a wallet to see your traits.</p>
-      ) : traits.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ink-700 bg-ink-900/40 p-8 text-center">
-          <p className="text-sm text-mist">
-            {scanning ? "Scanning announcements…" : "No traits discovered yet."}
-          </p>
-          <p className="mt-1 text-xs text-mist/60">
-            Traits appear here once the scanner detects a V2 attestation announcement addressed to
-            one of your stealth addresses. Make sure your announcements have synced, then Scan.
-          </p>
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate("schemas")}
-              className="mt-4 text-xs text-glow hover:underline"
-            >
-              Explore schemas
-            </button>
-          )}
-        </div>
       ) : (
-        <div className="space-y-3">
-          {traits.map((t) => (
-            <div key={t.attestationUid} className="rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-white">{t.schemaName || "Attestation"}</p>
-                  <p className="font-mono text-[11px] text-mist/60">
-                    issuer {t.issuer.slice(0, 10)}… · uid {t.attestationUid.slice(0, 12)}…
-                  </p>
-                </div>
-                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">
-                  valid
-                </span>
-              </div>
-              <button
-                onClick={() => setProving(t)}
-                className="mt-3 rounded-lg bg-glow px-3 py-1.5 text-xs font-semibold text-ink-950 disabled:opacity-40"
-              >
-                Prove
-              </button>
+        <>
+          {traits.length > 0 && (
+            <div className="relative mb-4">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mist/50">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by schema, issuer, or UID"
+                className="w-full rounded-xl border border-ink-700 bg-ink-950 py-2 pl-9 pr-3 text-sm text-white placeholder:text-mist/40"
+              />
             </div>
-          ))}
-        </div>
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-ink-700 bg-ink-900/40 p-8 text-center">
+              <p className="text-sm text-mist">
+                {traits.length === 0
+                  ? scanning
+                    ? "Scanning announcements…"
+                    : "No traits discovered yet."
+                  : "No traits match your search."}
+              </p>
+              {traits.length === 0 && (
+                <p className="mt-1 text-xs text-mist/60">
+                  Traits appear here once the scanner detects a V2 attestation announcement
+                  addressed to one of your stealth addresses. Make sure your announcements have
+                  synced, then Scan.
+                </p>
+              )}
+              {traits.length === 0 && onNavigate && (
+                <button
+                  onClick={() => onNavigate("schemas")}
+                  className="mt-4 text-xs text-glow hover:underline"
+                >
+                  Explore schemas
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((t) => (
+                <div key={t.attestationUid} className="rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
+                  <div className="flex items-start gap-3">
+                    <TraitIcon />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate font-medium text-white">
+                          {t.schemaName || "Attestation"}
+                        </p>
+                        <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">
+                          valid
+                        </span>
+                      </div>
+                      <dl className="mt-2 grid grid-cols-[3.5rem_1fr] gap-x-3 gap-y-1 text-xs">
+                        <dt className="text-mist/50">Issuer</dt>
+                        <dd className="font-mono text-mist" title={t.issuer}>{mask(t.issuer)}</dd>
+                        <dt className="text-mist/50">UID</dt>
+                        <dd className="font-mono text-mist" title={t.attestationUid}>{mask(t.attestationUid)}</dd>
+                      </dl>
+                      <button
+                        onClick={() => setProving(t)}
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-glow px-3 py-1.5 text-xs font-semibold text-ink-950"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z" />
+                        </svg>
+                        Prove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {proving && <ProofGeneratorModal trait={proving} onClose={() => setProving(null)} />}
