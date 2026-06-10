@@ -39,9 +39,9 @@ export default defineConfig({
     sepolia: {
       type: "http",
       chainType: "l1",
-      url: process.env.SEPOLIA_RPC_URL ?? "",
+      url: configVariable("SEPOLIA_RPC_URL"),
       chainId: 11155111,
-      accounts: [process.env.SEPOLIA_PRIVATE_KEY ?? ""],
+      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
     },
     // Polkadot Hub testnet (Paseo) – use deploy:paseo or deploy:tokens:paseo
     paseo: {

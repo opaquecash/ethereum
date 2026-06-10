@@ -21,6 +21,7 @@
   &nbsp;·&nbsp;
   <a href="https://youtu.be/NAo7j0-Yqa8">Demo</a>
   <br /><br />
+  <a href="https://github.com/opaquecash/ethereum/actions/workflows/eth-contracts.yml"><img src="https://github.com/opaquecash/ethereum/actions/workflows/eth-contracts.yml/badge.svg" alt="CI" /></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/license-GPLv3-5c7cfa?style=flat-square" alt="GPLv3 License" /></a>
 </p>
 
