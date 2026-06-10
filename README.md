@@ -83,7 +83,7 @@ Use it alongside the SDK README when you’re wiring **Graph-style announcement 
 
 | Path | What you’ll find |
 |------|------------------|
-| [`frontend/`](frontend/) | Reference wallet UI (balances, send, receive, private balance) |
+| Reference wallet UI | Cross-chain app [opaquecash/app](https://github.com/opaquecash/app) (was the in-repo `frontend/`) |
 | TypeScript SDK | Canonical packages [`@opaquecash/opaque`](https://www.npmjs.com/package/@opaquecash/opaque) and modular `@opaquecash/{stealth,psr}-*` ([opaquecash/sdk](https://github.com/opaquecash/sdk)); was the in-repo `sdk/` |
 | Developer docs | Standalone docs site [opaquecash/docs](https://github.com/opaquecash/docs) ([docs.opaque.cash](https://docs.opaque.cash)); was the in-repo `docs/` |
 | [`infra/`](infra/) | Hardhat contracts, deploy scripts |
