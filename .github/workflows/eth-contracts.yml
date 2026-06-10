@@ -13,6 +13,9 @@ jobs:
         working-directory: infra
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Groth16VerifierV2.test.ts verifies the proof fixture from circuits/
+          submodules: true
 
       - uses: actions/setup-node@v4
         with:
