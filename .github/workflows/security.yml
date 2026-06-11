@@ -1,0 +1,65 @@
+name: Security
+
+# Phase 3.3 pre-audit pass: static analysis on every PR. Reports are non-blocking
+# until the Phase 4 mainnet gate (then: fail on HIGH). Triage of current findings
+# lives in infra/security/pre-audit-triage.md; update it when findings change.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  slither:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Slither
+        uses: crytic/slither-action@v0.4.1
+        id: slither
+        continue-on-error: true
+        with:
+          target: infra/contracts/
+          solc-version: 0.8.28
+          fail-on: none
+          slither-args: --exclude-dependencies --checklist --markdown-root ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slither-report
+          path: |
+            **/slither.*
+          if-no-files-found: ignore
+
+  aderyn:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install aderyn
+        run: npm install -g @cyfrin/aderyn
+
+      - name: Run aderyn
+        run: aderyn .
+
+      - name: Summarize
+        run: |
+          echo "## Aderyn findings" >> "$GITHUB_STEP_SUMMARY"
+          sed -n '/# Issue Summary/,/^# /p' report.md >> "$GITHUB_STEP_SUMMARY" || true
+          grep -E "^## H-" report.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: aderyn-report
+          path: infra/report.md

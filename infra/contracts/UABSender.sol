@@ -33,6 +33,7 @@ contract UABSender {
     error SchemeIdTooLarge();
     error MetadataTooLong();
     error InsufficientFee();
+    error RefundFailed();
 
     constructor(address _wormhole, uint16 _sourceChainId) {
         wormhole = IWormhole(_wormhole);
@@ -63,6 +64,15 @@ contract UABSender {
         uint256 fee = wormhole.messageFee();
         if (msg.value < fee) revert InsufficientFee();
         sequence = wormhole.publishMessage{value: fee}(0, payload, consistencyLevel);
+
+        // Refund any overpayment (e.g. the fee dropped between quote and inclusion);
+        // the core bridge takes exactly `fee`, so without this the excess would be
+        // locked in this contract forever (pre-audit finding H-1).
+        uint256 excess = msg.value - fee;
+        if (excess > 0) {
+            (bool ok, ) = payable(msg.sender).call{value: excess}("");
+            if (!ok) revert RefundFailed();
+        }
 
         emit RelayedAnnouncement(sequence, payload);
     }

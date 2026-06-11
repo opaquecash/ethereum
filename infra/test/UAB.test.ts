@@ -96,6 +96,22 @@ describe("UABSender", async function () {
     );
   });
 
+  it("refunds any overpayment above the Wormhole message fee", async function () {
+    const { wormhole, sender } = await deploy();
+    await wormhole.write.setFee([100n]);
+    const publicClient = await viem.getPublicClient();
+
+    // Overpay by 1 ETH; the contract must end the tx holding nothing.
+    await sender.write.announceWithRelay(
+      [1n, getAddress(STEALTH), EPHEMERAL, META, CONSISTENCY_FINALIZED],
+      { value: 10n ** 18n + 100n },
+    );
+    const locked = await publicClient.getBalance({ address: sender.address });
+    assert.equal(locked, 0n, "no ether may remain locked in UABSender");
+    const feePaid = await publicClient.getBalance({ address: wormhole.address });
+    assert.equal(feePaid, 100n, "exactly the fee goes to the core bridge");
+  });
+
   it("requires the Wormhole message fee", async function () {
     const { wormhole, sender } = await deploy();
     await wormhole.write.setFee([1000n]);
