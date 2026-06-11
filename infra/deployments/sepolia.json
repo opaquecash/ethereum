@@ -1,0 +1,39 @@
+{
+  "chainId": 11155111,
+  "name": "Sepolia",
+  "contracts": {
+    "StealthMetaAddressRegistry": "0x77425e04163d608B876c7f50E34A378624A12067",
+    "StealthAddressAnnouncer": "0x840f72249A8bF6F10b0eB64412E315efBD730865",
+    "OpaqueSchemaRegistry": "0xAA5F3942117bD48E7Cd81A500A8b7Bbb122ae80f",
+    "OpaqueAttestationRegistry": "0x049aF9CBB62387034CDd5403794a94E9c000ACCc",
+    "OpaqueReputationVerifierV2": "0x18cEc2812953c2E9bcADE20CbF6415BD36aEb44f",
+    "Groth16VerifierV2": "0x49A212bdbc52F1cb6C93623FC7814a61Fc71ddB5",
+    "UABSender": "0x872787c0BD1A0C71e6D1be5a144EB044e0CB2069",
+    "UABReceiver": "0x9eF189f7a263F870Cf80f9A89d1349A6AF7b15cF",
+    "WormholeCore": "0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78"
+  },
+  "wormhole": {
+    "chainId": 2,
+    "sourceChainId": 1
+  },
+  "psrFromBlock": 11019444,
+  "uabFromBlock": 0,
+  "tokens": [
+    {
+      "address": "0x0000000000000000000000000000000000000000",
+      "symbol": "ETH",
+      "decimals": 18,
+      "native": true
+    },
+    {
+      "address": "0x73197e8303904862d543f9706E8422F634D713cb",
+      "symbol": "USDC",
+      "decimals": 6
+    },
+    {
+      "address": "0x6Ff8Afb2aA9eB5A89Ce86c44DD460bD17C92f644",
+      "symbol": "USDT",
+      "decimals": 6
+    }
+  ]
+}

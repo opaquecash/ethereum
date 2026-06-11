@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "compile": "hardhat compile",
+    "generate": "node scripts/generate-deployments.mjs",
     "test": "hardhat test",
     "node": "hardhat node",
     "deploy": "hardhat ignition deploy ignition/modules/Stealth.ts",
