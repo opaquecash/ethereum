@@ -30,6 +30,7 @@ const ABI_CONTRACTS = [
   "OpaqueReputationVerifierV2",
   "UABSender",
   "UABReceiver",
+  "RelayerRegistry",
 ];
 
 const HEADER = (script) =>
@@ -69,6 +70,7 @@ function emitEthereum(records) {
       groth16VerifierV2: "${c.Groth16VerifierV2}",
       uabSender: "${c.UABSender}",
       uabReceiver: "${c.UABReceiver}",
+      relayerRegistry: "${c.RelayerRegistry}",
       wormholeCore: "${c.WormholeCore}",
     },
     wormhole: { chainId: ${r.wormhole.chainId}, sourceChainId: ${r.wormhole.sourceChainId} },
