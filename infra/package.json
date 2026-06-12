@@ -34,8 +34,10 @@
     "@nomicfoundation/hardhat-ignition": "^3.0.7",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.2",
     "@types/node": "^22.19.11",
+    "circomlibjs": "^0.1.7",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.1.8",
+    "snarkjs": "^0.7.5",
     "tsx": "^4.19.2",
     "typescript": "~5.8.0",
     "viem": "^2.46.2"
