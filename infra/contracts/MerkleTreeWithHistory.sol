@@ -21,6 +21,8 @@ contract MerkleTreeWithHistory {
     uint32 public constant ROOT_HISTORY_SIZE = 30;
     mapping(uint256 => bytes32) public filledSubtrees;
     mapping(uint256 => bytes32) public roots;
+    /// @dev Cached zero-subtree roots, computed once at construction (zeros[0..levels]).
+    mapping(uint256 => bytes32) private _zeros;
     uint32 public currentRootIndex;
     uint32 public nextIndex;
 
@@ -31,10 +33,16 @@ contract MerkleTreeWithHistory {
         if (_levels == 0 || _levels >= 32) revert LevelsRange();
         levels = _levels;
         hasher2 = _hasher2;
+        // Compute the zero-subtree roots once (O(levels) Poseidon calls) and cache them;
+        // _insert then reads cached zeros in O(1), keeping insertion O(levels).
+        bytes32 z = bytes32(0);
+        _zeros[0] = z;
         for (uint32 i = 0; i < _levels; i++) {
-            filledSubtrees[i] = zeros(i);
+            filledSubtrees[i] = z;
+            z = _hasher2.poseidon([z, z]);
+            _zeros[i + 1] = z;
         }
-        roots[0] = zeros(_levels);
+        roots[0] = z;
     }
 
     function hashLeftRight(bytes32 left, bytes32 right) public view returns (bytes32) {
@@ -87,15 +95,9 @@ contract MerkleTreeWithHistory {
         return roots[currentRootIndex];
     }
 
-    /// @dev Precomputed zero-subtree roots. zeros(0) = 0 (empty leaf); the rest are
-    ///      Poseidon doublings, computed lazily and cached at construction into
-    ///      filledSubtrees. Recomputed here via the hasher to avoid hardcoding.
+    /// @notice Precomputed zero-subtree root at level `i` (cached at construction).
+    ///         zeros(0) = 0 (empty leaf); zeros(i) = Poseidon(zeros(i-1), zeros(i-1)).
     function zeros(uint256 i) public view returns (bytes32) {
-        if (i == 0) return bytes32(0);
-        bytes32 z = bytes32(0);
-        for (uint256 k = 0; k < i; k++) {
-            z = hasher2.poseidon([z, z]);
-        }
-        return z;
+        return _zeros[i];
     }
 }

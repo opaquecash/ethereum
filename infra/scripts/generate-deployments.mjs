@@ -71,6 +71,8 @@ function emitEthereum(records) {
       uabSender: "${c.UABSender}",
       uabReceiver: "${c.UABReceiver}",
       relayerRegistry: "${c.RelayerRegistry}",
+      opaquePrivacyPool: "${c.OpaquePrivacyPool}",
+      withdrawalVerifier: "${c.WithdrawalVerifier}",
       wormholeCore: "${c.WormholeCore}",
     },
     wormhole: { chainId: ${r.wormhole.chainId}, sourceChainId: ${r.wormhole.sourceChainId} },
