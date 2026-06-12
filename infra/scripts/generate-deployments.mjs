@@ -31,6 +31,7 @@ const ABI_CONTRACTS = [
   "UABSender",
   "UABReceiver",
   "RelayerRegistry",
+  "OpaqueDisclosureRegistry",
 ];
 
 const HEADER = (script) =>
@@ -73,6 +74,8 @@ function emitEthereum(records) {
       relayerRegistry: "${c.RelayerRegistry}",
       opaquePrivacyPool: "${c.OpaquePrivacyPool}",
       withdrawalVerifier: "${c.WithdrawalVerifier}",
+      opaqueDisclosureRegistry: "${c.OpaqueDisclosureRegistry}",
+      disclosureVerifier: "${c.DisclosureVerifier}",
       wormholeCore: "${c.WormholeCore}",
     },
     wormhole: { chainId: ${r.wormhole.chainId}, sourceChainId: ${r.wormhole.sourceChainId} },

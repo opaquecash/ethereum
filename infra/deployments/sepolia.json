@@ -15,7 +15,9 @@
     "OpaquePrivacyPool": "0x49a5bB6d079a43d50596069b4F2632005CFe729E",
     "WithdrawalVerifier": "0xa1add9daa1F4D0f9190c13fb9AD52e525f4726b5",
     "PoolPoseidon2": "0x738B557973a5C804260B1A3adb91Ee6049e2ef89",
-    "PoolPoseidon3": "0x6f49bdEB8c92C79c74bfEe1B287126B75c1DC9fF"
+    "PoolPoseidon3": "0x6f49bdEB8c92C79c74bfEe1B287126B75c1DC9fF",
+    "DisclosureVerifier": "0x50Dd94357D1450477e964922615F0d068B0d683E",
+    "OpaqueDisclosureRegistry": "0x4449DD0A94Fa6cd9C0074F3ee17b8823d6ceDD21"
   },
   "wormhole": {
     "chainId": 2,
