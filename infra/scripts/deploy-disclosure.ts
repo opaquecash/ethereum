@@ -31,10 +31,17 @@ const overrides = process.env.MAX_FEE_GWEI
     }
   : {};
 
-async function deploy(signer: ethers.Wallet, name: string, args: unknown[]): Promise<string> {
+async function deploy(
+  signer: ethers.Wallet,
+  name: string,
+  args: unknown[],
+  gasLimit?: number,
+): Promise<string> {
   const a = artifact(name);
   const factory = new ethers.ContractFactory(a.abi, a.bytecode, signer);
-  const c = await factory.deploy(...args, overrides);
+  // An explicit gasLimit skips estimateGas, which RPCs reject while the fee cap
+  // is below the current basefee — the tx waits in the mempool instead.
+  const c = await factory.deploy(...args, { ...overrides, ...(gasLimit ? { gasLimit } : {}) });
   await c.waitForDeployment();
   return c.getAddress();
 }
@@ -44,9 +51,10 @@ async function main() {
   const signer = new ethers.Wallet(process.env.SEPOLIA_PRIVATE_KEY!, provider);
   console.log("Deployer:", signer.address);
 
-  const verifier = await deploy(signer, "DisclosureVerifier", []);
+  const gasLimits = process.env.MAX_FEE_GWEI ? { verifier: 600_000, registry: 1_700_000 } : {};
+  const verifier = await deploy(signer, "DisclosureVerifier", [], gasLimits.verifier);
   console.log("DisclosureVerifier:", verifier);
-  const registry = await deploy(signer, "OpaqueDisclosureRegistry", [verifier]);
+  const registry = await deploy(signer, "OpaqueDisclosureRegistry", [verifier], gasLimits.registry);
   console.log("OpaqueDisclosureRegistry:", registry);
 
   const record = JSON.parse(fs.readFileSync(DEPLOYMENTS, "utf-8"));
