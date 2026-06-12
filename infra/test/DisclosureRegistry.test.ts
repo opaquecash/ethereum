@@ -30,10 +30,16 @@ import { buildPoseidon } from "circomlibjs";
 import * as snarkjs from "snarkjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CIRCUITS = path.join(__dirname, "..", "..", "..", "circuits");
-const FIXTURES = path.join(CIRCUITS, "test", "fixtures", "disclosure");
-const D_WASM = path.join(CIRCUITS, "v2", "build", "conditional_disclosure_js", "conditional_disclosure.wasm");
-const D_ZKEY = path.join(CIRCUITS, "v2", "build", "conditional_disclosure_final.zkey");
+// Prefer the circuits submodule of this repo (present in CI: committed fixtures only);
+// fall back to a sibling monorepo checkout, which also carries the generated
+// v2/build artifacts (wasm/zkeys) for local proving.
+const circuitsPath = (...segs: string[]): string => {
+  const sub = path.join(__dirname, "..", "..", "circuits", ...segs);
+  return existsSync(sub) ? sub : path.join(__dirname, "..", "..", "..", "circuits", ...segs);
+};
+const FIXTURES = circuitsPath("test", "fixtures", "disclosure");
+const D_WASM = circuitsPath("v2", "build", "conditional_disclosure_js", "conditional_disclosure.wasm");
+const D_ZKEY = circuitsPath("v2", "build", "conditional_disclosure_final.zkey");
 const LEVELS = 20;
 const FIELD =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
