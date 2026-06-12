@@ -23,8 +23,9 @@
     "chainId": 2,
     "sourceChainId": 1
   },
+  "stealthFromBlock": 10298567,
   "psrFromBlock": 11019444,
-  "uabFromBlock": 0,
+  "uabFromBlock": 11022332,
   "tokens": [
     {
       "address": "0x0000000000000000000000000000000000000000",

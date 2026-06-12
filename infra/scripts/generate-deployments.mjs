@@ -79,6 +79,7 @@ function emitEthereum(records) {
       wormholeCore: "${c.WormholeCore}",
     },
     wormhole: { chainId: ${r.wormhole.chainId}, sourceChainId: ${r.wormhole.sourceChainId} },
+    stealthFromBlock: ${r.stealthFromBlock}n,
     psrFromBlock: ${r.psrFromBlock}n,
     uabFromBlock: ${r.uabFromBlock}n,
     tokens: [
