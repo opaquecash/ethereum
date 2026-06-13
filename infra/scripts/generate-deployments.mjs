@@ -53,6 +53,10 @@ function emitEthereum(records) {
   const entries = records
     .map((r) => {
       const c = r.contracts;
+      // Optional: only emit once the gasless sweep forwarder is deployed on this chain.
+      const sweepLine = c.StealthTokenSweep
+        ? `      stealthTokenSweep: "${c.StealthTokenSweep}",\n`
+        : "";
       const tokens = r.tokens
         .map(
           (t) =>
@@ -72,7 +76,7 @@ function emitEthereum(records) {
       uabSender: "${c.UABSender}",
       uabReceiver: "${c.UABReceiver}",
       relayerRegistry: "${c.RelayerRegistry}",
-      opaquePrivacyPool: "${c.OpaquePrivacyPool}",
+${sweepLine}      opaquePrivacyPool: "${c.OpaquePrivacyPool}",
       withdrawalVerifier: "${c.WithdrawalVerifier}",
       opaqueDisclosureRegistry: "${c.OpaqueDisclosureRegistry}",
       disclosureVerifier: "${c.DisclosureVerifier}",
