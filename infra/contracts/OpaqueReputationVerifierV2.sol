@@ -89,10 +89,14 @@ contract OpaqueReputationVerifierV2 {
     /// @notice Maximum age of a Merkle root before it is considered stale.
     uint256 public constant ROOT_EXPIRY = 1 hours;
 
-    /// @notice Ordered list of recent roots (circular buffer for UI enumeration).
+    /// @notice FIFO list of recent, still-live roots (for UI enumeration). Eviction is
+    ///         age-based (see `updateMerkleRoot`), so the array holds exactly the roots
+    ///         posted within the last `ROOT_EXPIRY` window, oldest first.
     bytes32[] public rootHistory;
 
-    /// @notice Maximum number of roots kept in history.
+    /// @notice Advisory steady-state ceiling on live roots. Eviction is age-based, not
+    ///         count-based (OPQ-017), so this is documentation of the expected window
+    ///         size, not a hard cap that would evict still-valid roots.
     uint256 public constant MAX_ROOT_HISTORY = 100;
 
     // =========================================================================
@@ -121,16 +125,33 @@ contract OpaqueReputationVerifierV2 {
     // =========================================================================
 
     /// @notice Submit a new Merkle root from the off-chain attestation tree.
+    /// @dev Eviction is by AGE, FIFO from the front — a still-live root is never removed
+    ///      before its `ROOT_EXPIRY` TTL, and no swap-pop reordering occurs (OPQ-017).
+    ///      Roots are pushed in timestamp order, so the first still-live entry bounds the
+    ///      prune and the live set self-limits to roots posted within one TTL window.
     function updateMerkleRoot(bytes32 root) external onlyAdmin {
         merkleRoots[root] = block.timestamp;
-
-        if (rootHistory.length >= MAX_ROOT_HISTORY) {
-            bytes32 oldest = rootHistory[0];
-            delete merkleRoots[oldest];
-            rootHistory[0] = rootHistory[rootHistory.length - 1];
-            rootHistory.pop();
-        }
         rootHistory.push(root);
+
+        uint256 removed = 0;
+        uint256 len = rootHistory.length;
+        while (removed < len) {
+            bytes32 stale = rootHistory[removed];
+            uint256 ts = merkleRoots[stale];
+            // Stop at the first root still within its TTL; everything after it is fresher.
+            if (ts != 0 && block.timestamp - ts <= ROOT_EXPIRY) break;
+            if (ts != 0) delete merkleRoots[stale];
+            removed++;
+        }
+        if (removed > 0) {
+            uint256 keep = len - removed;
+            for (uint256 i = 0; i < keep; i++) {
+                rootHistory[i] = rootHistory[i + removed];
+            }
+            for (uint256 i = 0; i < removed; i++) {
+                rootHistory.pop();
+            }
+        }
 
         emit MerkleRootUpdated(root, block.number);
     }

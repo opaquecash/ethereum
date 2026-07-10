@@ -68,6 +68,37 @@ describe("OpaqueReputationVerifierV2", () => {
     assert.ok(await verifier.read.usedNullifiers([1003n]));
   });
 
+  it("keeps fresh roots valid past the old count cap (age-based FIFO eviction, OPQ-017)", async () => {
+    const { verifier, admin } = await deployFixture();
+    const first = keccak256(toHex("root-0"));
+    await verifier.write.updateMerkleRoot([first], { account: admin.account });
+    // Post well beyond the old MAX_ROOT_HISTORY (100) within the TTL window. The old
+    // count-based swap-pop would have force-evicted `first` before its 1h expiry.
+    for (let i = 1; i <= 105; i++) {
+      await verifier.write.updateMerkleRoot([keccak256(toHex(`root-${i}`))], { account: admin.account });
+    }
+    assert.ok(await verifier.read.isRootValid([first]), "fresh first root must survive");
+    assert.ok((await verifier.read.rootHistoryLength()) >= 106n, "no live root evicted by count");
+  });
+
+  it("prunes roots older than ROOT_EXPIRY on the next update (OPQ-017)", async () => {
+    const { viem, verifier, admin } = await deployFixture();
+    const stale = keccak256(toHex("stale-root"));
+    await verifier.write.updateMerkleRoot([stale], { account: admin.account });
+    assert.ok(await verifier.read.isRootValid([stale]));
+
+    const testClient = await viem.getTestClient();
+    await testClient.increaseTime({ seconds: 3601 }); // > ROOT_EXPIRY (1h)
+    await testClient.mine({ blocks: 1 });
+
+    const fresh = keccak256(toHex("fresh-root"));
+    await verifier.write.updateMerkleRoot([fresh], { account: admin.account });
+
+    assert.equal(await verifier.read.isRootValid([stale]), false, "expired root no longer valid");
+    assert.equal(await verifier.read.merkleRoots([stale]), 0n, "expired root storage cleared");
+    assert.ok(await verifier.read.isRootValid([fresh]));
+  });
+
   it("verifies a V2 proof and consumes the nullifier hash", async () => {
     const { verifier, admin, user } = await deployFixture();
     const root = keccak256(toHex("v2-root"));
