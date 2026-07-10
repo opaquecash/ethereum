@@ -38,7 +38,7 @@ const POOL_ABI = [
   "function aspRoot() view returns (uint256)",
   "function context((address recipient,address feeRecipient,uint256 fee) params) view returns (uint256)",
   "function nullifierSpent(bytes32) view returns (bool)",
-  "function withdraw(uint256[2] a,uint256[2][2] b,uint256[2] c,uint256 withdrawnValue,uint256 stateRoot,uint256 nullifierHash,uint256 newCommitment,(address recipient,address feeRecipient,uint256 fee) params)",
+  "function withdraw(uint256[2] a,uint256[2][2] b,uint256[2] c,uint256 withdrawnValue,uint256 stateRoot,uint256 aspRoot,uint256 nullifierHash,uint256 newCommitment,(address recipient,address feeRecipient,uint256 fee) params)",
   "event Deposit(bytes32 indexed commitment, uint256 label, uint256 value, uint32 leafIndex)",
 ];
 
@@ -131,7 +131,7 @@ async function main() {
   const before = await provider.getBalance(recipient);
   console.log("withdrawing 0.0008 ETH to a fresh address ...");
   const wTx = await pool.withdraw(
-    a, b, c, withdrawnValue, stateRoot, nullifierHash, newCommitment, params,
+    a, b, c, withdrawnValue, stateRoot, aspRoot, nullifierHash, newCommitment, params,
     { gasLimit: 1_500_000 },
   );
   const wRc = await wTx.wait();

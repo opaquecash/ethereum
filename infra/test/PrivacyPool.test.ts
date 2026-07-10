@@ -153,6 +153,10 @@ describe("OpaquePrivacyPool", async () => {
       // ASP: approve this label (single-leaf association tree).
       const aspRoot = singleLeafRoot(label);
       await pool.write.setAspRoot([aspRoot]);
+      // Rotate the ASP root afterwards: the withdrawal proof is pinned to the earlier root,
+      // which must still be accepted from the recent-root history (OPQ-016).
+      await pool.write.setAspRoot([aspRoot + 1n]);
+      assert.equal(await pool.read.isKnownAspRoot([aspRoot]), true);
 
       // Withdrawal params + the contract's context binding.
       const params = {
@@ -199,7 +203,7 @@ describe("OpaquePrivacyPool", async () => {
 
       const before = await publicClient.getBalance({ address: params.recipient });
       const wHash = await pool.write.withdraw([
-        a, b, c, withdrawnValue, stateRoot, nullifierHash, newCommitment, params,
+        a, b, c, withdrawnValue, stateRoot, aspRoot, nullifierHash, newCommitment, params,
       ]);
       await publicClient.waitForTransactionReceipt({ hash: wHash });
       const after = await publicClient.getBalance({ address: params.recipient });
@@ -210,9 +214,54 @@ describe("OpaquePrivacyPool", async () => {
 
       // Replay is rejected.
       await assert.rejects(
-        pool.write.withdraw([a, b, c, withdrawnValue, stateRoot, nullifierHash, newCommitment, params]),
+        pool.write.withdraw([a, b, c, withdrawnValue, stateRoot, aspRoot, nullifierHash, newCommitment, params]),
         /NullifierAlreadySpent/,
       );
     },
   );
+
+  const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+  const ONE = "0x0000000000000000000000000000000000000001" as Address;
+  const zeroProof = () =>
+    [
+      [0n, 0n] as [bigint, bigint],
+      [[0n, 0n], [0n, 0n]] as [[bigint, bigint], [bigint, bigint]],
+      [0n, 0n] as [bigint, bigint],
+    ] as const;
+
+  it("rejects setAspRoot(0) and keeps a bounded ASP-root history (OPQ-016)", async () => {
+    const { pool } = await deployPool();
+    await assert.rejects(pool.write.setAspRoot([0n]), /ZeroAspRoot/);
+    assert.equal(await pool.read.isKnownAspRoot([0n]), false);
+
+    // Post 31 distinct roots; the ring buffer holds 30, so the oldest (1) is evicted.
+    for (let i = 1n; i <= 31n; i++) await pool.write.setAspRoot([i]);
+    assert.equal(BigInt((await pool.read.aspRoot()) as bigint), 31n);
+    assert.equal(await pool.read.isKnownAspRoot([1n]), false, "oldest root evicted");
+    assert.equal(await pool.read.isKnownAspRoot([2n]), true, "recent root still known");
+    assert.equal(await pool.read.isKnownAspRoot([31n]), true, "latest root known");
+  });
+
+  it("rejects a withdrawal proving against an unknown ASP root (OPQ-016)", async () => {
+    const { pool } = await deployPool();
+    const emptyRoot = BigInt((await pool.read.getLastRoot()) as bigint); // a known state root
+    await pool.write.setAspRoot([123n]);
+    const params = { recipient: ONE, feeRecipient: ZERO, fee: 0n };
+    const [a, b, c] = zeroProof();
+    await assert.rejects(
+      pool.write.withdraw([a, b, c, 1n, emptyRoot, 999n, 7n, 8n, params]),
+      /StaleAspRoot/,
+    );
+  });
+
+  it("reverts a withdrawal that sets a fee with no fee recipient (OPQ-029)", async () => {
+    const { pool } = await deployPool();
+    const params = { recipient: ONE, feeRecipient: ZERO, fee: 1n };
+    const [a, b, c] = zeroProof();
+    // Checked before the state/asp-root lookups, so no valid proof is required to reach it.
+    await assert.rejects(
+      pool.write.withdraw([a, b, c, 10n, 0n, 0n, 0n, 0n, params]),
+      /FeeWithoutRecipient/,
+    );
+  });
 });

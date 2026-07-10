@@ -36,8 +36,17 @@ contract OpaquePrivacyPool is MerkleTreeWithHistory {
 
     /// @notice ASP authority that posts the association-set root (testnet: single address).
     address public aspAuthority;
-    /// @notice Current association-set root the withdrawal proof must attest against.
+    /// @notice Latest association-set root posted by the authority.
     uint256 public aspRoot;
+
+    /// @notice Bounded ring buffer of recent ASP roots — mirrors the state-tree
+    ///         `ROOT_HISTORY_SIZE` window so a withdrawal proof pinned to any recent ASP
+    ///         root still verifies across a rotation instead of being griefed (OPQ-016).
+    uint32 public constant ASP_ROOT_HISTORY_SIZE = 30;
+    /// @notice Ring buffer of recent nonzero ASP roots.
+    mapping(uint256 => uint256) public aspRoots;
+    /// @notice Index of the most recently written slot in `aspRoots`.
+    uint32 public currentAspRootIndex;
 
     /// @notice Consumed nullifier hashes (consume-once; spec §3).
     mapping(bytes32 => bool) public nullifierSpent;
@@ -65,9 +74,11 @@ contract OpaquePrivacyPool is MerkleTreeWithHistory {
     error ValueTooLarge();
     error UnknownStateRoot();
     error StaleAspRoot();
+    error ZeroAspRoot();
     error NullifierAlreadySpent();
     error InvalidProof();
     error FeeExceedsWithdrawn();
+    error FeeWithoutRecipient();
     error PayoutFailed();
     error NotAspAuthority();
     error ZeroAddress();
@@ -121,18 +132,24 @@ contract OpaquePrivacyPool is MerkleTreeWithHistory {
         uint[2] calldata c,
         uint256 withdrawnValue,
         uint256 stateRoot,
+        uint256 _aspRoot,
         uint256 nullifierHash,
         uint256 newCommitment,
         WithdrawalParams calldata params
     ) external {
+        if (params.fee > withdrawnValue) revert FeeExceedsWithdrawn();
+        // A nonzero fee with no recipient would strand the fee in the pool (OPQ-029).
+        if (params.fee > 0 && params.feeRecipient == address(0)) revert FeeWithoutRecipient();
         if (!isKnownRoot(bytes32(stateRoot))) revert UnknownStateRoot();
+        // Accept the proof's ASP root if it is any recent posted root, not just the latest,
+        // so a rotation does not invalidate in-flight proofs (OPQ-016).
+        if (!isKnownAspRoot(_aspRoot)) revert StaleAspRoot();
         bytes32 nh = bytes32(nullifierHash);
         if (nullifierSpent[nh]) revert NullifierAlreadySpent();
-        if (params.fee > withdrawnValue) revert FeeExceedsWithdrawn();
 
         uint256 ctx = _context(params);
         uint[6] memory input =
-            [withdrawnValue, stateRoot, aspRoot, nullifierHash, newCommitment, ctx];
+            [withdrawnValue, stateRoot, _aspRoot, nullifierHash, newCommitment, ctx];
         if (!verifier.verifyProof(a, b, c, input)) revert InvalidProof();
 
         // Effects: consume the nullifier, insert the remainder commitment.
@@ -172,8 +189,24 @@ contract OpaquePrivacyPool is MerkleTreeWithHistory {
 
     function setAspRoot(uint256 newRoot) external {
         if (msg.sender != aspAuthority) revert NotAspAuthority();
+        if (newRoot == 0) revert ZeroAspRoot();
+        uint32 newIndex = (currentAspRootIndex + 1) % ASP_ROOT_HISTORY_SIZE;
+        currentAspRootIndex = newIndex;
+        aspRoots[newIndex] = newRoot;
         aspRoot = newRoot;
         emit ASPRootUpdated(newRoot);
+    }
+
+    /// @notice Whether `root` is a nonzero root in the recent ASP-root ring buffer.
+    function isKnownAspRoot(uint256 root) public view returns (bool) {
+        if (root == 0) return false;
+        uint32 i = currentAspRootIndex;
+        do {
+            if (root == aspRoots[i]) return true;
+            if (i == 0) i = ASP_ROOT_HISTORY_SIZE;
+            i--;
+        } while (i != currentAspRootIndex);
+        return false;
     }
 
     function transferAspAuthority(address next) external {
