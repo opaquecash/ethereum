@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { concatHex, pad, getAddress } from "viem";
+import { concatHex, pad, toHex, getAddress } from "viem";
 import { network } from "hardhat";
 
 const SOURCE_CHAIN_ETH = 2; // Wormhole chain id for Ethereum
 const SOURCE_CHAIN_SOL = 1; // Wormhole chain id for Solana
 const CONSISTENCY_FINALIZED = 200;
+const ZERO32 = ("0x" + "00".repeat(32)) as `0x${string}`;
 
 // 33-byte compressed ephemeral key, a 20-byte stealth address, view tag + 4 metadata bytes.
 const EPHEMERAL = ("0x02" + "11".repeat(32)) as `0x${string}`;
@@ -17,16 +18,21 @@ const META = "0x09deadbeef" as `0x${string}`; // view tag 0x09, tail deadbeef
 // A 32-byte Solana emitter (stand-in for the uab emitter PDA).
 const SOL_EMITTER = ("0x" + "ab".repeat(32)) as `0x${string}`;
 
-// The canonical 96-byte payload for the fixtures above (spec/payload-format.md).
-function expectedPayload(): `0x${string}` {
+// A 96-byte payload (spec/payload-format.md) stamped with a given origin chain id.
+function payloadWithSource(sourceChainId: number): `0x${string}` {
   return concatHex([
     VIEW_TAG as `0x${string}`, // [0] view tag
     EPHEMERAL, // [1..34) ephemeral pubkey (33)
     pad(STEALTH, { size: 32 }), // [34..66) stealth, left-padded
-    "0x0002", // [66..68) source chain id = 2
+    pad(toHex(sourceChainId), { size: 2 }), // [66..68) source chain id
     "0x00000001", // [68..72) scheme id = 1
     pad("0xdeadbeef", { size: 24, dir: "right" }), // [72..96) metadata tail, right-padded
   ]);
+}
+
+// The canonical payload UABSender stamps: Ethereum-origin (source chain id = 2).
+function expectedPayload(): `0x${string}` {
+  return payloadWithSource(SOURCE_CHAIN_ETH);
 }
 
 describe("UABSender", async function () {
@@ -152,7 +158,9 @@ describe("UABReceiver", async function () {
       opts.chain ?? SOURCE_CHAIN_SOL,
       opts.emitter ?? SOL_EMITTER,
       opts.sequence ?? 0n,
-      opts.payload ?? expectedPayload(),
+      // Default to a payload whose embedded source chain id matches the emitter chain
+      // (Solana = 1), as required after OPQ-022.
+      opts.payload ?? payloadWithSource(SOURCE_CHAIN_SOL),
       opts.valid ?? true,
       "",
     ]);
@@ -166,7 +174,7 @@ describe("UABReceiver", async function () {
       receiver.write.receiveAnnouncement([vaa]),
       receiver,
       "CrossChainAnnouncement",
-      [SOURCE_CHAIN_SOL, SOL_EMITTER, 7n, expectedPayload()],
+      [SOURCE_CHAIN_SOL, SOL_EMITTER, 7n, payloadWithSource(SOURCE_CHAIN_SOL)],
     );
   });
 
@@ -187,6 +195,37 @@ describe("UABReceiver", async function () {
     const { wormhole, receiver } = await deploy();
     const vaa = (await makeVaa(wormhole, { chain: 5 })) as `0x${string}`;
     await viem.assertions.revertWithCustomError(receiver.write.receiveAnnouncement([vaa]), receiver, "UnknownEmitter");
+  });
+
+  it("rejects a payload whose source_chain_id disagrees with the emitter chain (OPQ-022)", async function () {
+    const { wormhole, receiver } = await deploy();
+    // Emitter chain is Solana (1), but the payload stamps source chain id = 2 (Ethereum).
+    const vaa = (await makeVaa(wormhole, { payload: payloadWithSource(SOURCE_CHAIN_ETH) })) as `0x${string}`;
+    await viem.assertions.revertWithCustomError(
+      receiver.write.receiveAnnouncement([vaa]),
+      receiver,
+      "SourceChainMismatch",
+    );
+  });
+
+  it("reverts while the trusted emitter is unconfigured (OPQ-033)", async function () {
+    const wormhole = await viem.deployContract("MockWormhole" as any);
+    const [admin] = await viem.getWalletClients();
+    const receiver = await viem.deployContract("UABReceiver" as any, [
+      wormhole.address,
+      admin!.account.address,
+      SOURCE_CHAIN_SOL,
+      ZERO32, // emitter left unset until the opposite chain's sender is deployed
+    ]);
+    const vaa = (await makeVaa(wormhole, {
+      emitter: ZERO32,
+      payload: payloadWithSource(SOURCE_CHAIN_SOL),
+    })) as `0x${string}`;
+    await viem.assertions.revertWithCustomError(
+      receiver.write.receiveAnnouncement([vaa]),
+      receiver,
+      "EmitterNotConfigured",
+    );
   });
 
   it("rejects a payload that is not 96 bytes", async function () {

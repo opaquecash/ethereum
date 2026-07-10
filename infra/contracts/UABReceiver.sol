@@ -41,6 +41,10 @@ contract UABReceiver {
     error BadPayloadLength();
     error Unauthorized();
     error ZeroAddress();
+    /// @notice The trusted emitter has not been configured yet (OPQ-033).
+    error EmitterNotConfigured();
+    /// @notice The payload's embedded source_chain_id disagrees with the VAA emitter chain (OPQ-022).
+    error SourceChainMismatch();
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert Unauthorized();
@@ -78,12 +82,23 @@ contract UABReceiver {
 
     /// @notice Verify a VAA from the trusted source emitter and re-emit its payload locally.
     function receiveAnnouncement(bytes calldata encodedVaa) external {
+        // Refuse to accept anything until the real trusted emitter is configured, so the
+        // all-zero-emitter deploy window cannot admit a zero-emitter VAA (OPQ-033).
+        if (expectedEmitter == bytes32(0)) revert EmitterNotConfigured();
+
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(encodedVaa);
         if (!valid) revert InvalidVAA(reason);
         if (vm.emitterChainId != expectedEmitterChain || vm.emitterAddress != expectedEmitter) {
             revert UnknownEmitter();
         }
         if (vm.payload.length != 96) revert BadPayloadLength();
+
+        // The payload's embedded source_chain_id (bytes [66..68], big-endian) must agree
+        // with the VAA's authenticated emitterChainId so downstream scanners cannot be
+        // fed a payload-vs-VAA origin mismatch for dedup/attribution (OPQ-022).
+        uint16 payloadSourceChain =
+            (uint16(uint8(vm.payload[66])) << 8) | uint16(uint8(vm.payload[67]));
+        if (payloadSourceChain != vm.emitterChainId) revert SourceChainMismatch();
 
         bytes32 key = keccak256(abi.encodePacked(vm.emitterChainId, vm.emitterAddress, vm.sequence));
         if (consumed[key]) revert AlreadyConsumed();
