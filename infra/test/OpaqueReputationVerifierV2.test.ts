@@ -18,7 +18,7 @@ describe("OpaqueReputationVerifierV2", () => {
       mockVerifier.address,
       admin.account.address,
     ]);
-    return { verifier, mockVerifier, admin, user, other };
+    return { viem, verifier, mockVerifier, admin, user, other };
   }
 
   it("deploys with the correct admin and verifier", async () => {
@@ -36,6 +36,36 @@ describe("OpaqueReputationVerifierV2", () => {
       verifier.write.updateMerkleRoot([keccak256(toHex("x"))], { account: user.account }),
       "non-admin should not update roots"
     );
+  });
+
+  it("binds the proof to a live registered schema when a registry is configured (OPQ-006)", async () => {
+    const { viem, verifier, admin, user } = await deployFixture();
+    const registry = await viem.deployContract("MockSchemaRegistry" as any);
+    const root = keccak256(toHex("v2-root"));
+    await verifier.write.updateMerkleRoot([root], { account: admin.account });
+
+    // Default: no registry configured, so a proof for any attestationId is accepted.
+    await verifier.write.verifyReputation([PROOF, root, 42n, 1n, 1001n], { account: user.account });
+
+    // Configure the registry (admin-only) and make it report the schema inactive.
+    await assert.rejects(
+      verifier.write.setSchemaRegistry([registry.address], { account: user.account }),
+      "non-admin cannot set the schema registry"
+    );
+    await verifier.write.setSchemaRegistry([registry.address], { account: admin.account });
+    await registry.write.setActive([false]);
+
+    // A proof whose attestation_id is not a live schema is now rejected before the pairing.
+    await assert.rejects(
+      verifier.write.verifyReputation([PROOF, root, 42n, 2n, 1002n], { account: user.account }),
+      "unregistered schema must be rejected"
+    );
+    assert.equal(await verifier.read.verifyReputationView([PROOF, root, 42n, 2n, 1002n]), false);
+
+    // Once the schema is live again, the proof verifies.
+    await registry.write.setActive([true]);
+    await verifier.write.verifyReputation([PROOF, root, 42n, 3n, 1003n], { account: user.account });
+    assert.ok(await verifier.read.usedNullifiers([1003n]));
   });
 
   it("verifies a V2 proof and consumes the nullifier hash", async () => {

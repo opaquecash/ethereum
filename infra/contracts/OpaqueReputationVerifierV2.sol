@@ -21,6 +21,12 @@ interface IGroth16VerifierV2 {
     ) external view returns (bool);
 }
 
+/// @notice Minimal view surface of OpaqueSchemaRegistry used to bind a proof's
+///         `attestation_id` to a live, registered schema.
+interface IOpaqueSchemaRegistry {
+    function isActive(bytes32 schemaId) external view returns (bool);
+}
+
 contract OpaqueReputationVerifierV2 {
     // =========================================================================
     // Errors
@@ -31,6 +37,8 @@ contract OpaqueReputationVerifierV2 {
     error InvalidMerkleRoot();
     error Unauthorized();
     error ZeroAddress();
+    /// @notice The proof's attestation_id is not a live registered schema (OPQ-006).
+    error SchemaNotRegistered();
 
     // =========================================================================
     // Events
@@ -51,12 +59,23 @@ contract OpaqueReputationVerifierV2 {
     /// @notice Emitted on admin transfer.
     event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
+    /// @notice Emitted when the schema-registry binding is set (address(0) disables it).
+    event SchemaRegistryUpdated(address indexed registry);
+
     // =========================================================================
     // State
     // =========================================================================
 
     /// @notice The V2 Groth16 verifier (generated from the V2 circuit's verification key).
     IGroth16VerifierV2 public immutable groth16Verifier;
+
+    /// @notice Optional schema registry. When set, `verifyReputation` requires the proof's
+    ///         `attestation_id` to reference a live registered schema, so a proof cannot
+    ///         claim reputation under a schema that was never registered by an authority
+    ///         (OPQ-006). address(0) disables the check. Note this binds the SCHEMA only;
+    ///         binding the ISSUER (that an authorized key attested) additionally requires the
+    ///         in-circuit commitment to the schema authority — the tracked full remediation.
+    IOpaqueSchemaRegistry public schemaRegistry;
 
     /// @notice Admin authorized to submit Merkle roots.
     address public admin;
@@ -153,6 +172,7 @@ contract OpaqueReputationVerifierV2 {
     ) external returns (bool valid) {
         if (usedNullifiers[nullifierHash]) revert NullifierAlreadyUsed();
         if (!isRootValid(root)) revert InvalidMerkleRoot();
+        if (!_schemaAllowed(attestationId)) revert SchemaNotRegistered();
 
         uint256[4] memory pubSignals;
         pubSignals[0] = uint256(root);
@@ -178,6 +198,7 @@ contract OpaqueReputationVerifierV2 {
     ) external view returns (bool valid) {
         if (usedNullifiers[nullifierHash]) return false;
         if (!isRootValid(root)) return false;
+        if (!_schemaAllowed(attestationId)) return false;
 
         uint256[4] memory pubSignals;
         pubSignals[0] = uint256(root);
@@ -196,5 +217,17 @@ contract OpaqueReputationVerifierV2 {
     function transferAdmin(address newAdmin) external onlyAdmin {
         emit AdminTransferred(admin, newAdmin);
         admin = newAdmin;
+    }
+
+    /// @notice Set (or, with address(0), disable) the schema-registry binding (OPQ-006).
+    function setSchemaRegistry(address registry) external onlyAdmin {
+        schemaRegistry = IOpaqueSchemaRegistry(registry);
+        emit SchemaRegistryUpdated(registry);
+    }
+
+    /// @dev True unless a registry is configured and `attestationId` is not a live schema.
+    function _schemaAllowed(uint256 attestationId) internal view returns (bool) {
+        IOpaqueSchemaRegistry registry = schemaRegistry;
+        return address(registry) == address(0) || registry.isActive(bytes32(attestationId));
     }
 }
