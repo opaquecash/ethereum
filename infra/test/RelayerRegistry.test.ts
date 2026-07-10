@@ -66,6 +66,17 @@ describe("RelayerRegistry", async function () {
       // After the request, nothing is free to bond.
       assert.equal(await ctx.registry.read.freeStakeOf([ctx.creator.account.address]), 0n);
     });
+
+    it("forbids a second unstake request while one is pending (OPQ-027)", async function () {
+      const ctx = await deploy();
+      await ctx.registry.write.register([X25519, ""], { value: STAKE });
+      await ctx.registry.write.requestUnstake([parseEther("0.01")]);
+      // A second request would re-age the already-vested amount to a fresh cooldown.
+      await assert.rejects(
+        ctx.registry.write.requestUnstake([parseEther("0.01")]),
+        /UnstakePending/,
+      );
+    });
   });
 
   describe("job lifecycle", function () {
@@ -224,6 +235,24 @@ describe("RelayerRegistry", async function () {
       await testClient.mine({ blocks: 1 });
       await assert.rejects(
         ctx.registry.write.acceptJob([JOB_ID], { account: ctx.relayer.account }),
+        /DeadlinePassed/,
+      );
+    });
+
+    it("blocks submit after the deadline so only slashing is valid (OPQ-023)", async function () {
+      const ctx = await deploy();
+      const { data } = await setupJob(ctx, 60);
+      await ctx.registry.write.acceptJob([JOB_ID], { account: ctx.relayer.account });
+
+      const testClient = await viem.getTestClient();
+      await testClient.increaseTime({ seconds: 120 });
+      await testClient.mine({ blocks: 1 });
+
+      // The relayer stalled past the deadline: it can no longer submit to dodge the slash.
+      await assert.rejects(
+        ctx.registry.write.submitJob([JOB_ID, ctx.target.address, data], {
+          account: ctx.relayer.account,
+        }),
         /DeadlinePassed/,
       );
     });

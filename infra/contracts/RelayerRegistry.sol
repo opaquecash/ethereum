@@ -71,6 +71,7 @@ contract RelayerRegistry {
     error NotRegistered();
     error InsufficientFreeStake();
     error CooldownActive();
+    error UnstakePending();
     error NothingToWithdraw();
     error TransferFailed();
     error ZeroFee();
@@ -126,8 +127,11 @@ contract RelayerRegistry {
     }
 
     /// @notice Move free stake into the unstake queue; withdrawable after the cooldown.
+    /// @dev Only one pending unstake at a time: a second request would re-age already-vested
+    ///      funds to a fresh full cooldown (OPQ-027). Withdraw the pending amount first.
     function requestUnstake(uint256 amount) external {
         Relayer storage r = relayers[msg.sender];
+        if (r.unstaking != 0) revert UnstakePending();
         if (amount > r.stake - r.bonded) revert InsufficientFreeStake();
         r.stake -= amount;
         r.unstaking += amount;
@@ -196,6 +200,9 @@ contract RelayerRegistry {
         if (j.creator == address(0)) revert UnknownJob();
         if (j.closed) revert JobClosed();
         if (msg.sender != j.relayer) revert NotJobRelayer();
+        // After the deadline only slashing is valid; a late submit must not race the slash
+        // and dodge the penalty (OPQ-023).
+        if (block.timestamp >= j.deadline) revert DeadlinePassed();
         if (keccak256(abi.encode(target, data)) != j.payloadHash) revert PayloadMismatch();
         if (target == address(this)) revert SelfTarget();
 
