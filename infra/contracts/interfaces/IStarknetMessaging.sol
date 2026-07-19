@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 /// @title IStarknetMessaging
 /// @notice Minimal interface to the Starknet Core Contract's L1->L2 messaging entrypoint.
-///         Matches the deployed core ABI (Sepolia core: 0xE2Bb56ee936fd6433Dc0F6e7e3b8365C906AA057).
+///         Matches the deployed core ABI (Sepolia core: 0xE2Bb56ee936fd6433DC0F6e7e3b8365C906AA057).
 interface IStarknetMessaging {
     /// @notice Send a message to an L2 contract. The sequencer delivers `payload` to the
     ///         `#[l1_handler]` identified by `selector` on `toAddress`, injecting this
